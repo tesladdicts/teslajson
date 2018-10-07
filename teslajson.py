@@ -86,6 +86,10 @@ class Connection(object):
                            auth['created_at'] + auth['expires_in'] - 86400)
         return self.__open("%s%s" % (self.api, command), headers=self.head, data=data)
     
+    def __user_agent(self):
+        if not "User-Agent" in self.head:
+            self.head["User-Agent"] = 'teslajson.py 1.3.1'
+
     def __sethead(self, access_token, expiration=float('inf')):
         """Set HTTP header"""
         self.access_token = access_token
@@ -96,6 +100,7 @@ class Connection(object):
         """Raw urlopen command"""
         if not baseurl:
             baseurl = self.baseurl
+        self.__user_agent()
         req = Request("%s%s" % (baseurl, url), headers=headers)
         try:
             req.data = urlencode(data).encode('utf-8') # Python 3
