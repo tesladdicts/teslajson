@@ -143,6 +143,11 @@ class Vehicle(dict):
         super(Vehicle, self).__init__(data)
         self.connection = connection
     
+    def data_all(self):
+        """Get all vehicle data"""
+        result = self.get('data')
+        return result['response']
+    
     def data_request(self, name):
         """Get vehicle data"""
         result = self.get('data_request/%s' % name)
