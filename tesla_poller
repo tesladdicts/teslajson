@@ -1,0 +1,174 @@
+#!/usr/bin/python
+import teslajson
+import time
+import json
+import traceback
+import urllib2
+import argparse
+from threading import Thread
+import sys
+
+# to_sleep is the amount of time it takes for the vehicle to go back to sleep
+intervals = { "inactive": 60, "to_sleep": 665, "active": 60, "charging": 90, "running": 30, "Unknown": 15, "sleep_poll": 10000, "running_poll": 300, "recent": 300 }
+
+
+def refresh_vehicles(args):
+    """Connect to service and get list of vehicles"""
+
+    c = teslajson.Connection(access_token=args.token)
+    if args.verbose:
+        print("# Vehicles: %s"%str(c.vehicles))
+    return c
+
+
+
+def monitor_vehicle(vehicle, args):
+    """Monitor a vehicle, forever, printing json about current status"""
+
+    state = "Unknown" if not args.assume_inactive else "inactive"
+    backoff = 1
+    last_poll = 0
+    last_active = 0
+
+    # Loop to handle exceptions, with bounded expoential backoff to prevent Tesla from getting overly mad if we are polling too often
+    while True:
+        try:
+            # Loop to allow the vehicle to sleep
+            while True:
+                wake_tries = 0
+                while wake_tries < 100000:
+
+                    vdata = vehicle.data_request(None)
+                    vdata['retrevial_time'] = int(time.time())
+
+                    print json.dumps(vdata)
+
+                    # See whether it is awake or asleep
+                    if args.verbose:
+                        print("# STATE: %s carstate %s at %d"%(state, vdata['state'],time.time()))
+
+                    # If awake (not asleep), figure out what is going on
+                    if vdata["state"] not in ("asleep","offline","inactive"):
+                        break
+
+                    # If asleep and we know what is going on, and it isn't time for a double-check, let it sleep
+                    if state == "inactive" and time.time() - last_poll < intervals['sleep_poll']:
+                        time.sleep(intervals[state])
+                        continue
+
+                    # Otherwise, try to make it up
+                    wake_tries += 1
+                    if args.verbose:
+                        print("# Waking... (%d times so far) at %d"%(wake_tries,time.time()))
+
+                    # Pretty common to time out here, so let it
+                    try:
+                        vehicle.wake_up()
+                    except urllib2.HTTPError:
+                        print "# Timed out"
+                    # Rate limitation on wake-ups
+                    duration = 2.5 * wake_tries
+                    if duration > 3600:
+                        duration = 3600
+                    time.sleep(duration)
+                else:
+                    print("Could not wake %s"%vehicle['display_name'])
+
+                state = "Unknown"
+                backoff = 0     # Reset backoff interval now that we have successful comms
+                last_active = 0
+                time.sleep(5)
+
+                # The vehicle is awake, monitor it until it is boring for a while
+                while not (state == "inactive" and time.time() - last_active > intervals["recent"]):
+
+                    # Figure out what type of monitoring we want to do based on current state
+                    want = None
+                    if time.time() - last_poll >= intervals['sleep_poll']:
+                        state = "Unknown"
+                    if state == "running":
+                        if time.time() - last_poll >= intervals['running_poll']:
+                            want = "Unknown"
+                        else:
+                            want = "drive_state"
+                    elif state == "charging":
+                        want = "charge_state"
+                    else:
+                        if args.verbose:
+                            print("# Getting all data due to state %s at %d"%(state,time.time()))
+
+                        # We want to know everything
+                        curdata = vehicle.data_all()
+                        last_poll = time.time()
+                        if curdata['drive_state']['shift_state'] is not None:
+                            state = "running"
+                            last_active = last_poll
+                        elif curdata['climate_state']['is_climate_on']:
+                            state = "active"
+                            last_active = last_poll
+                        elif curdata['charge_state']['charger_power']:
+                            state = "charging"
+                            last_active = last_poll
+                        else:
+                            state = "inactive"
+
+                    if want:
+                        if args.verbose:
+                            print("# Getting %s data due to state %s at %d"%(want,state,time.time()))
+                        # We only want to know some things
+                        curdata = dict(vdata)
+                        curdata[want] = vehicle.data_request(want)
+
+                        # If we transitioned from doing X to !X, get full information next cycle
+                        if state == "running" and curdata['drive_state']['shift_state'] is None:
+                            state = "Unknown"
+                        elif state == "charging" and not curdata['charge_state']['charger_power']:
+                            state = "Unknown"
+
+                    curdata['retrevial_time'] = int(time.time())
+                    print json.dumps(curdata)
+
+                    if args.verbose:
+                        print("# STATE: %s sleep %s at %d %d %d"%(state, intervals[state], time.time(), last_poll, last_active))
+                    time.sleep(intervals[state])
+
+                if state == "inactive":
+                    if args.verbose:
+                        print("# STATE: ready to sleep, sleep %d at %d"%(intervals["to_sleep"], time.time()))
+                    time.sleep(intervals["to_sleep"])
+
+        except Exception as e:
+            print "# Exception: %s"%str(e)
+            backoff += 1
+
+        if backoff > 3:
+            backoff = 3
+        intrvl = 6 * 10**backoff
+        print("# Disaster sleep for %d"%intrvl)
+        time.sleep(intrvl)
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--verbose', action='count', help='Increasing levels of verbosity')
+parser.add_argument('--intervals',action='append',type=lambda x: x.split('='), help="Set important intervals name=secs for names in inactive,active,charging,running,Unknown,sleep_poll,running_poll,recent")
+parser.add_argument('--token', help='Access token for tesla service')
+parser.add_argument('--assume_inactive', action='store_true', help='Access token for tesla service')
+args = parser.parse_args()
+
+if not args.token:
+    print('''Must supply --token: Get access_token via:\ncurl -X POST -H "Cache-Control: no-cache" -H "Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW" -F "grant_type=password" -F "client_id=81527cff06843c8634fdc09e8ac0abefb46ac849f38fe1e431c2ef2106796384" -F "client_secret=c7257eb71a564034f9419ee651c7d0e5f7aa6bfbd18bafb5c5c033b093bb2fa3" -F "email=YOUR-TESLA-LOGIN-EMAIL@SOMEWHERE.COM" -F "password=YOUR-TESLA-ACCOUNT-PASSWORD" "https://owner-api.teslamotors.com/oauth/token''')
+    sys.exit(1)
+
+if args.intervals:
+    intervals.update(args.intervals)
+
+c = refresh_vehicles(args)
+
+if len(c.vehicles) < 1:
+    raise Exception("No vehicles to monitor")
+
+if len(c.vehicles) == 1:
+    monitor_vehicle(c.vehicles[0], args)
+else:
+    for vehicle in c.vehicles:
+        Thread(target=monitor_vehicle, args=(vehicle,args)).start()
