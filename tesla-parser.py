@@ -13,6 +13,7 @@ parser.add_argument('--verbose', '-v', action='count', help='Increasing levels o
 parser.add_argument('--nosummary', action='store_true', help='Do not print summary information')
 parser.add_argument('--follow', '-f', type=str, help='Follow this specific file')
 parser.add_argument('--numlines', '-n', type=str, help='Handle these number of lines')
+parser.add_argument('--outdir', default=None, help='Convert input files into daily output files')
 parser.add_argument('files', nargs='*')
 args = parser.parse_args()
 
@@ -43,6 +44,23 @@ class openfile(object):
             self.sub.kill()
 
 
+nexthour = 0
+X = None
+def output_maintenance(cur):
+    global nexthour, X
+    import time
+    if not args.outdir:
+        return
+    if cur < nexthour:
+        return
+    if X is not None:
+        X.close()
+    nexthour = (int(cur / 3600)+1) * 3600
+    fname = time.strftime("%Y-%m-%d.json", time.gmtime(cur))
+    pname = "%s/%s"%(args.outdir, fname)
+    X = open(pname, "a", 0)
+    subprocess.call(["ln", "-sf", fname, "%s/cur.json"%args.outdir])
+
 
 firstthismode = None
 lastprevmode = None
@@ -60,6 +78,10 @@ for fname in args.files:
 
             if not this:
                 continue
+
+            if args.outdir:
+                output_maintenance(this.time)
+                X.write(line)
 
             if this.mode == "Polling":
                 reallasttime = this.time
