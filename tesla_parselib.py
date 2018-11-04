@@ -8,7 +8,7 @@ import copy
 
 class tesla_record(object):
     """Abbreviated information about a specific record retrieved from a tesla"""
-    def __init__(self, line):
+    def __init__(self, line, want_offline=False):
         """Create object from json text data from tesla_poller"""
 
         # self.jline set in new
@@ -31,11 +31,13 @@ class tesla_record(object):
             self.mode = "Charging"
         elif self.shift_state and self.shift_state != "P":
             self.mode = "Driving"
-        else:
+        elif self.charger_power is not None or self.odometer is not None:
             self.mode = "Standby"
+        else:
+            self.mode = "Polling"
 
 
-    def __new__(cls, line=None):
+    def __new__(cls, line=None, want_offline=False):
         """Return None if this isn't what we want"""
 
         if line is not None and (line.startswith("#") or len(line) < 10):
@@ -54,7 +56,7 @@ class tesla_record(object):
         if "retrevial_time" not in instance.jline:
             return None
 
-        if instance.jline["state"] != "online":
+        if instance.jline["state"] != "online" and not want_offline:
             return None
 
         return instance

@@ -44,8 +44,11 @@ class openfile(object):
 
 
 
-lastmode = None
+firstthismode = None
+lastprevmode = None
 save = None
+lastthis = None
+reallasttime = None
 
 for fname in args.files:
     with openfile(fname, args) as R:
@@ -58,10 +61,15 @@ for fname in args.files:
             if not this:
                 continue
 
+            if this.mode == "Polling":
+                reallasttime = this.time
+                continue
+
             if save:
                 save = save + this
             else:
                 save = this
+                prev = this
 
             if this.usable_battery_level:
                 bat="%3d%%/%.2fM"%(this.usable_battery_level,this.battery_range)
@@ -79,60 +87,68 @@ for fname in args.files:
                 rate=""
 
 
-            while lastmode and not args.nosummary:
-                if lastmode.mode != this.mode:
-                    lastmodetime = datetime.datetime.fromtimestamp(lastmode.time)
+            while firstthismode and not args.nosummary:
+                if firstthismode.mode != this.mode:
+
+                    if reallasttime:
+                        this.time = reallasttime
+                        reallasttime = None
+
+                    firstthismodetime = datetime.datetime.fromtimestamp(firstthismode.time)
                     thistime = datetime.datetime.fromtimestamp(save.time)
-                    if lastmode.mode == "Charging":
+                    if firstthismode.mode == "Charging":
                         battery_range = save.battery_range if save.battery_range > lastthis.battery_range else lastthis.battery_range
                         usable_battery_level = save.usable_battery_level if save.usable_battery_level > lastthis.usable_battery_level else lastthis.usable_battery_level
-                        dblevel = usable_battery_level - lastmode.usable_battery_level
+                        dblevel = usable_battery_level - lastprevmode.usable_battery_level
 
                         print("%s +%-16s Charged   %3d%% %5.2fkW %5.1fM (%3dmph, %4.1fkW %5.1fM max)"%
-                              (lastmodetime.strftime('%Y-%m-%d %H:%M:%S'),
-                               str(thistime-lastmodetime),
+                              (firstthismodetime.strftime('%Y-%m-%d %H:%M:%S'),
+                               str(thistime-firstthismodetime),
                                dblevel,
                                save.charge_energy_added,
-                               battery_range - lastmode.battery_range,
-                               ((battery_range - lastmode.battery_range)*3600.0 /
-                                (thistime-lastmodetime).total_seconds()),
+                               battery_range - lastprevmode.battery_range,
+                               ((battery_range - lastprevmode.battery_range)*3600.0 /
+                                (thistime-firstthismodetime).total_seconds()),
                                (save.charge_energy_added * 100.0 /
                                 (dblevel)) if dblevel > 0 else -0,
                                battery_range * 100.0 / save.usable_battery_level))
-                    elif lastmode.mode == "Driving":
+                    elif firstthismode.mode == "Driving":
                         if not this.odometer:
                             break
                         battery_range = save.battery_range if save.battery_range < lastthis.battery_range else lastthis.battery_range
                         usable_battery_level = save.usable_battery_level if save.usable_battery_level < lastthis.usable_battery_level else lastthis.usable_battery_level
-                        dodo = save.odometer - lastmode.odometer
-                        drange = lastmode.battery_range - battery_range
+                        dodo = save.odometer - lastprevmode.odometer
+                        drange = lastprevmode.battery_range - battery_range
 
                         if dodo > -1:
                             print("%s +%-16s Drove  %6.2fM at cost of %4.1f%% %5.1fM at %5.1f%% efficiency"%
-                                  (lastmodetime.strftime('%Y-%m-%d %H:%M:%S'),
-                                   str(thistime-lastmodetime),
+                                  (firstthismodetime.strftime('%Y-%m-%d %H:%M:%S'),
+                                   str(thistime-firstthismodetime),
                                    dodo,
-                                   lastmode.usable_battery_level - usable_battery_level,
+                                   lastprevmode.usable_battery_level - usable_battery_level,
                                    drange,
                                    dodo * 100.0 / drange if drange > 0 else -0))
-                    elif lastmode.mode == "Standby":
+                    elif firstthismode.mode == "Standby":
                         battery_range = save.battery_range if save.battery_range < lastthis.battery_range else lastthis.battery_range
                         usable_battery_level = save.usable_battery_level if save.usable_battery_level < lastthis.usable_battery_level else lastthis.usable_battery_level
-                        drange = lastmode.battery_range - battery_range
+                        drange = lastprevmode.battery_range - battery_range
                         print("%s +%-16s Sat&Lost %4.1f%% %5.1fM or %5.1fM/d"%
-                              (lastmodetime.strftime('%Y-%m-%d %H:%M:%S'),
-                               str(thistime-lastmodetime),
-                               lastmode.usable_battery_level - usable_battery_level,
+                              (firstthismodetime.strftime('%Y-%m-%d %H:%M:%S'),
+                               str(thistime-firstthismodetime),
+                               lastprevmode.usable_battery_level - usable_battery_level,
                                drange,
-                               drange / (((thistime-lastmodetime).total_seconds()) / 86400.0)))
+                               drange / (((thistime-firstthismodetime).total_seconds()) / 86400.0)))
 
 
                     else:
-                        print("Do not handle mode %s"%lastmode.mode)
-                    lastmode = save
+                        print("Do not handle mode %s"%firstthismode.mode)
+                    firstthismode = save
+                    lastprevmode = lastthis
                 break
             else:
-                lastmode = save
+                reallasttime = None
+                firstthismode = save
+                lastprevmode = save
             lastthis = save
 
             if args.verbose:
