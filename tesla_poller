@@ -149,7 +149,7 @@ def monitor_vehicle(vehicle, args):
                             state = "Unknown"
 
                     curdata['retrevial_time'] = int(time.time())
-                    W.write(json.dumps(curdata))
+                    W.write(json.dumps(curdata)+"\n")
 
                     if args.verbose:
                         W.write("# STATE: %s sleep %s at %d %d %d\n"%(state, intervals[state], time.time(), last_poll, last_active))
