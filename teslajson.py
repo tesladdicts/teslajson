@@ -17,11 +17,11 @@ v.command('charge_start')
 try: # Python 3
     from urllib.parse import urlencode
     from urllib.request import Request, build_opener
-    from urllib.request import ProxyHandler, HTTPBasicAuthHandler, HTTPHandler
+    from urllib.request import ProxyHandler, HTTPBasicAuthHandler, HTTPHandler, HTTPSHandler
 except: # Python 2
     from urllib import urlencode
     from urllib2 import Request, build_opener
-    from urllib2 import ProxyHandler, HTTPBasicAuthHandler, HTTPHandler
+    from urllib2 import ProxyHandler, HTTPBasicAuthHandler, HTTPHandler, HTTPSHandler
 import json
 import datetime
 import calendar
@@ -55,23 +55,23 @@ class Connection(object):
         self.proxy_password = proxy_password
         self.head = {}
         tesla_client = self.__open("/raw/0a8e0xTJ", baseurl="http://pastebin.com")
-        current_client = tesla_client['v1']
-        self.baseurl = current_client['baseurl']
+        self.current_client = tesla_client['v1']
+        self.baseurl = self.current_client['baseurl']
         prefix='https://'
         if not self.baseurl.startswith(prefix) or '/' in self.baseurl[len(prefix):] or not self.baseurl.endswith(('.teslamotors.com','.tesla.com')):
             raise IOError("Unexpected URL (%s) from pastebin" % self.baseurl)
-        self.api = current_client['api']
+        self.api = self.current_client['api']
         if access_token:
-            self.__sethead(access_token)
+            self._sethead(access_token)
         else:
             self.oauth = {
                 "grant_type" : "password",
-                "client_id" : current_client['id'],
-                "client_secret" : current_client['secret'],
+                "client_id" : self.current_client['id'],
+                "client_secret" : self.current_client['secret'],
                 "email" : email,
                 "password" : password }
             self.expiration = 0 # force refresh
-        self.vehicles = [Vehicle(v, self) for v in self.get('vehicles')['response']]
+        self.vehicles = [Vehicle(v, self) for v in sorted(self.get('vehicles')['response'], key=lambda d: d['id'])]
     
     def get(self, command):
         """Utility command to get data from API"""
@@ -82,7 +82,7 @@ class Connection(object):
         now = calendar.timegm(datetime.datetime.now().timetuple())
         if now > self.expiration:
             auth = self.__open("/oauth/token", data=self.oauth)
-            self.__sethead(auth['access_token'],
+            self._sethead(auth['access_token'],
                            auth['created_at'] + auth['expires_in'] - 86400)
         return self.__open("%s%s" % (self.api, command), headers=self.head, data=data)
     
@@ -90,11 +90,21 @@ class Connection(object):
         if not "User-Agent" in self.head:
             self.head["User-Agent"] = 'teslajson.py 1.3.1'
 
-    def __sethead(self, access_token, expiration=float('inf')):
+    def _sethead(self, access_token, expiration=float('inf')):
         """Set HTTP header"""
         self.access_token = access_token
         self.expiration = expiration
         self.head = {"Authorization": "Bearer %s" % access_token}
+
+    def refresh_token(self, refresh_token):
+        self.oauth = {
+            "grant_type" : "refresh_token",
+            "client_id" : self.current_client['id'],
+            "client_secret" : self.current_client['secret'],
+            "refresh_token" : refresh_token }
+        self.head = {}
+        return self.__open("/oauth/token", data=self.oauth)
+
     
     def __open(self, url, headers={}, data=None, baseurl=""):
         """Raw urlopen command"""
@@ -122,6 +132,7 @@ class Connection(object):
                 handler = ProxyHandler({'https': self.proxy_url})
                 opener = build_opener(handler)
         else:
+#            opener = build_opener(HTTPSHandler(debuglevel=1))
             opener = build_opener()
         resp = opener.open(req)
         charset = resp.info().get('charset', 'utf-8')

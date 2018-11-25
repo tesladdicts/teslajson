@@ -8,11 +8,138 @@ import argparse
 from threading import Thread
 import sys
 import subprocess
+import socket
+import Queue
 
 args = None
+master_connection = None
 
 # to_sleep is the amount of time it takes for the vehicle to go back to sleep
-intervals = { "inactive": 60, "to_sleep": 665, "active": 60, "charging": 90, "running": 30, "Unknown": 15, "sleep_poll": 10000, "running_poll": 300, "recent": 300 }
+intervals = { "inactive": 60, "to_sleep": 665, "active": 60, "charging": 90, "running": 30, "Unknown": 15, "sleep_poll": 10000, "running_poll": 300, "recent": 500 }
+
+
+def update_tokens(tokens=None, R=None):
+    if not tokens:
+        tokens = json.load(R)
+
+    args.token = tokens["access_token"]
+    args.refreshtoken = tokens["refresh_token"]
+    args.tokenexpire = tokens["created_at"] + tokens["expires_in"]
+
+    if master_connection:
+        master_connection._sethead(args.token)
+
+
+def monitor_expirey():
+    if args.tokenexpire and args.refreshtoken and time.time() > (args.tokenexpire - 86400):
+        if args.verbose:
+            print("Trying Refresh")
+        try:
+            tokes = master_connection.refresh_token(args.refreshtoken)
+        except Exception as e:
+            raise e
+        if args.verbose:
+            print("Refresh with %s"%tokes)
+        update_tokens(tokens=tokes)
+        if args.tokenfile:
+            with open(args.tokenfile, "w") as W:
+                W.write(json.dumps(tokes))
+                print("Written")
+
+
+def monitor_socket(sock, queues, vlist):
+    while True:
+        data, addr = sock.recvfrom(1024)
+        if args.verbose:
+            print("Received socket data: %s"%str(data))
+        if data is None:
+            return
+        try:
+            dvar = json.loads(data)
+        except ValueError:
+            if args.verbose:
+                print("Could not parse socket data")
+            continue
+        if 'cmd' not in dvar:
+            if args.verbose:
+                print("No command in socket data")
+            continue
+        if dvar['cmd'] not in ('autocondition','quit'):
+            if args.verbose:
+                print("Unknown command socket data")
+            continue
+        if 'carid' not in dvar:
+            if 'carpos' not in dvar:
+                dvar['carpos'] = 0
+            try:
+                dvar['carid'] = vlist[dvar['carpos']]['id']
+            except KeyError:
+                if args.verbose:
+                    print("Unknown vehicle position")
+                continue
+        try:
+            q = queues[dvar['carid']]
+        except KeyError:
+            if args.verbose:
+                print("Unknown vehicle id")
+            continue
+        q.put(dvar)
+        if dvar['cmd'] == 'quit':
+            sys.exit(0)
+
+
+def handle_queue(v, q, data, outs):
+    try:
+        dvar = q.get_nowait()
+    except Queue.Empty:
+        return
+    if dvar['cmd'] == 'quit':
+        sys.exit(0)
+    if dvar['cmd'] == "autocondition":
+        if "charge_state" not in data:
+            data = v.data_all()
+        level = 85 if data['charge_state']['charge_limit_soc'] <= 80 else data['charge_state']['charge_limit_soc'] + 5
+        if level > 100:
+            level = 100
+        temp = True
+
+        if "level" in dvar:
+            try:
+                level = int(dvar["level"])
+            except ValueError:
+                if args.verbose:
+                    print("Bad condition level")
+                return
+        if "temp" in dvar:
+            if dvar["temp"]:
+                temp = True
+            else:
+                temp = False
+        wake(v)
+        if level:
+            command(v, "set_charge_limit", {"percent": level})
+            outs['reset_charge_limit'] = data['charge_state']['charge_limit_soc']
+            if args.verbose:
+                print("Setting charge limit to %d"%level)
+        if temp:
+            command(v, "auto_conditioning_start")
+            if args.verbose:
+                print("Turning on conditioning")
+        else:
+            command(v, "auto_conditioning_stop")
+            if args.verbose:
+                print("Turning off conditioning")
+        return True
+
+
+def handle_outstanding(v, data, outs):
+    if "reset_charge_limit" in outs:
+        if "drive_state" in data:
+            if data["drive_state"]["shift_state"] is not None:
+                if args.verbose:
+                    print("Resetting charge limit to %d"%outs["reset_charge_limit"])
+                command(v, "set_charge_limit", {"percent": outs["reset_charge_limit"]})
+                del(outs["reset_charge_limit"])
 
 
 nexthour = 0
@@ -31,69 +158,123 @@ def output_maintenance():
     W = open(pname, "a", 0)
     subprocess.call(["ln", "-sf", fname, "%s/cur.json"%args.outdir])
 
+
 def refresh_vehicles(args):
     """Connect to service and get list of vehicles"""
 
     c = teslajson.Connection(access_token=args.token)
     if args.verbose:
-        W.write("# Vehicles: %s\n"%str(c.vehicles))
+        print("# Vehicles: %s\n"%str(c.vehicles))
     return c
 
 
-def monitor_vehicle(vehicle, args):
+def data_request(vehicle, type):
+    for cnt in range(1, 10):
+        try:
+            if type == "all":
+                vdata = vehicle.data_all()
+            else:
+                vdata = vehicle.data_request(type)
+            vdata['retrevial_time'] = int(time.time())
+            return vdata
+        except urllib2.HTTPError:
+            W.write('# Timed out or other error')
+        duration = 2.5 * cnt
+        if duration > 3600:
+            duration = 3600
+        time.sleep(duration)
+    raise Exception("Data request %s failed"%type)
+
+
+def command(vehicle, *args, **kvargs):
+    for cnt in range(1, 10):
+        try:
+            result = vehicle.command(*args, **kvargs)
+            return result
+        except urllib2.HTTPError:
+            W.write('# Timed out or other error')
+        duration = 1.5 * cnt
+        if duration > 3600:
+            duration = 3600
+        time.sleep(duration)
+    raise Exception("Command %s failed"%str(args))
+
+
+def wake(vehicle):
+    wake_tries = 0
+    while wake_tries < 10000:
+        wake_tries += 1
+        output_maintenance()
+
+        vdata = data_request(vehicle, None)
+
+        W.write(json.dumps(vdata)+"\n")
+
+        if vdata["state"] not in ("asleep","offline","inactive"):
+            return vdata
+
+        if args.verbose:
+            W.write("# Waking... (%d times so far) at %d\n"%(wake_tries,time.time()))
+
+        # Pretty common to time out here, so let it
+        try:
+            vehicle.wake_up()
+        except urllib2.HTTPError:
+            W.write("# Timed out\n")
+            # Rate limitation on wake-ups
+        duration = 2.5 * wake_tries
+        if duration > 3600:
+            duration = 3600
+        time.sleep(duration)
+
+    W.write("# Could not wake %s\n"%vehicle['display_name'])
+    return None
+
+
+def monitor_sleep(vehicle, queue, data, outstanding, stime):
+    while stime > 0:
+        delta = 5 if stime > 5 else stime
+        time.sleep(delta)
+        stime -= delta
+        if queue:
+            if handle_queue(vehicle, queue, data, outstanding):
+                return
+
+
+def monitor_vehicle(vehicle, args, queue):
     """Monitor a vehicle, forever, printing json about current status"""
 
-    state = "Unknown" if not args.assume_inactive else "inactive"
+    state = "Unknown"
     backoff = 1
     last_poll = 0
     last_active = 0
+    outstanding = {}
 
     output_maintenance()
 
     # Loop to handle exceptions, with bounded expoential backoff to prevent Tesla from getting overly mad if we are polling too often
     while True:
         try:
+            wake(vehicle)
+
             # Loop to allow the vehicle to sleep
             while True:
-                wake_tries = 0
-                while wake_tries < 100000:
-                    output_maintenance()
+                output_maintenance()
 
-                    vdata = vehicle.data_request(None)
-                    vdata['retrevial_time'] = int(time.time())
+                monitor_expirey()
 
-                    W.write(json.dumps(vdata)+"\n")
+                vdata = data_request(vehicle, None)
 
-                    # See whether it is awake or asleep
-                    if args.verbose:
-                        W.write("# STATE: %s carstate %s at %d\n"%(state, vdata['state'],time.time()))
+                if queue:
+                    handle_queue(vehicle, queue, vdata, outstanding)
 
-                    # If awake (not asleep), figure out what is going on
-                    if vdata["state"] not in ("asleep","offline","inactive"):
-                        break
+                if outstanding:
+                    handle_outstanding(vehicle, vdata, outstanding)
 
-                    # If asleep and we know what is going on, and it isn't time for a double-check, let it sleep
-                    if state == "inactive" and time.time() - last_poll < intervals['sleep_poll']:
-                        time.sleep(intervals[state])
-                        continue
-
-                    # Otherwise, try to make it up
-                    wake_tries += 1
-                    if args.verbose:
-                        W.write("# Waking... (%d times so far) at %d\n"%(wake_tries,time.time()))
-
-                    # Pretty common to time out here, so let it
-                    try:
-                        vehicle.wake_up()
-                    except urllib2.HTTPError:
-                        W.write("# Timed out\n")
-                    # Rate limitation on wake-ups
-                    duration = 2.5 * wake_tries
-                    if duration > 3600:
-                        duration = 3600
-                    time.sleep(duration)
-                else:
-                    W.write("Could not wake %s\n"%vehicle['display_name'])
+                # If asleep and we know what is going on, and it isn't time for a double-check, let it sleep
+                if state == "inactive" and time.time() - last_poll < intervals['sleep_poll']:
+                    time.sleep(intervals[state])
+                    continue
 
                 state = "Unknown"
                 backoff = 0     # Reset backoff interval now that we have successful comms
@@ -102,7 +283,6 @@ def monitor_vehicle(vehicle, args):
 
                 # The vehicle is awake, monitor it until it is boring for a while
                 while not (state == "inactive" and time.time() - last_active > intervals["recent"]):
-
                     output_maintenance()
 
                     # Figure out what type of monitoring we want to do based on current state
@@ -121,7 +301,7 @@ def monitor_vehicle(vehicle, args):
                             W.write("# Getting all data due to state %s at %d\n"%(state,time.time()))
 
                         # We want to know everything
-                        curdata = vehicle.data_all()
+                        curdata = data_request(vehicle, "all")
                         last_poll = time.time()
                         if curdata['drive_state']['shift_state'] is not None:
                             state = "running"
@@ -140,7 +320,7 @@ def monitor_vehicle(vehicle, args):
                             W.write("# Getting %s data due to state %s at %d\n"%(want,state,time.time()))
                         # We only want to know some things
                         curdata = dict(vdata)
-                        curdata[want] = vehicle.data_request(want)
+                        curdata[want] = data_request(vehicle, want)
 
                         # If we transitioned from doing X to !X, get full information next cycle
                         if state == "running" and curdata['drive_state']['shift_state'] is None:
@@ -148,12 +328,20 @@ def monitor_vehicle(vehicle, args):
                         elif state == "charging" and not curdata['charge_state']['charger_power']:
                             state = "Unknown"
 
-                    curdata['retrevial_time'] = int(time.time())
                     W.write(json.dumps(curdata)+"\n")
+
+                    monitor_expirey()
+
+                    if queue:
+                        handle_queue(vehicle, queue, vdata, outstanding)
+
+                    if outstanding:
+                        handle_outstanding(vehicle, vdata, outstanding)
 
                     if args.verbose:
                         W.write("# STATE: %s sleep %s at %d %d %d\n"%(state, intervals[state], time.time(), last_poll, last_active))
-                    time.sleep(intervals[state])
+
+                    monitor_sleep(vehicle, queue, vdata, outstanding, intervals[state])
 
                 if state == "inactive":
                     if args.verbose:
@@ -162,6 +350,7 @@ def monitor_vehicle(vehicle, args):
 
         except Exception as e:
             W.write("# Exception: %s\n"%str(e))
+            traceback.print_exc()
             backoff += 1
 
         if backoff > 3:
@@ -174,27 +363,50 @@ def monitor_vehicle(vehicle, args):
 parser = argparse.ArgumentParser()
 parser.add_argument('--verbose', action='count', help='Increasing levels of verbosity')
 parser.add_argument('--intervals',action='append',type=lambda x: x.split('='), help="Set important intervals name=secs for names in inactive,active,charging,running,Unknown,sleep_poll,running_poll,recent")
-parser.add_argument('--token', help='Access token for tesla service')
-parser.add_argument('--assume_inactive', action='store_true', help='Access token for tesla service')
+parser.add_argument('--token', default=None, help='Access token for tesla service')
+parser.add_argument('--refreshtoken', default=None, help='Access token generator')
+parser.add_argument('--tokenexpire', default=None, help='When does access token expire')
+parser.add_argument('--tokenfile', default=None, help='File containing access token json for tesla service')
 parser.add_argument('--outdir', default=None, help='Directory to output log files')
+parser.add_argument('--cmd_address', default=None, help='address:Port number to receive UDP commands on')
 args = parser.parse_args()
 
 W = None if args.outdir else sys.stdout
 
-if not args.token:
-    print('''Must supply --token: Get access_token via:\ncurl -X POST -H "Cache-Control: no-cache" -H "Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW" -F "grant_type=password" -F "client_id=81527cff06843c8634fdc09e8ac0abefb46ac849f38fe1e431c2ef2106796384" -F "client_secret=c7257eb71a564034f9419ee651c7d0e5f7aa6bfbd18bafb5c5c033b093bb2fa3" -F "email=YOUR-TESLA-LOGIN-EMAIL@SOMEWHERE.COM" -F "password=YOUR-TESLA-ACCOUNT-PASSWORD" "https://owner-api.teslamotors.com/oauth/token''')
+if not args.token and not args.tokenfile:
+    print('''Must supply --token (or --tokenfile): Get access_token via:\ncurl -X POST -H "Cache-Control: no-cache" -H "Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW" -F "grant_type=password" -F "client_id=81527cff06843c8634fdc09e8ac0abefb46ac849f38fe1e431c2ef2106796384" -F "client_secret=c7257eb71a564034f9419ee651c7d0e5f7aa6bfbd18bafb5c5c033b093bb2fa3" -F "email=YOUR-TESLA-LOGIN-EMAIL@SOMEWHERE.COM" -F "password=YOUR-TESLA-ACCOUNT-PASSWORD" "https://owner-api.teslamotors.com/oauth/token''')
     sys.exit(1)
 
+if args.tokenfile:
+    with open(args.tokenfile, "r") as R:
+        update_tokens(R=R)
+
 if args.intervals:
+    args.intervals = dict(args.intervals)
+    for x in args.intervals:
+        args.intervals[x] = int(args.intervals[x])
     intervals.update(args.intervals)
 
-c = refresh_vehicles(args)
+master_connection = refresh_vehicles(args)
 
-if len(c.vehicles) < 1:
+if len(master_connection.vehicles) < 1:
     raise Exception("No vehicles to monitor")
 
-if len(c.vehicles) == 1:
-    monitor_vehicle(c.vehicles[0], args)
+
+if args.cmd_address:
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    dest = args.cmd_address.split(":")
+    dest[1] = int(dest[1])
+    sock.bind(tuple(dest))
+    queues = dict([(v['id'], Queue.Queue()) for v in master_connection.vehicles])
+    Thread(target=monitor_socket, args=(sock,queues,master_connection.vehicles)).start()
 else:
-    for vehicle in c.vehicles:
-        Thread(target=monitor_vehicle, args=(vehicle,args)).start()
+    sock = None
+    queues = dict([(v['id'], None) for v in master_connection.vehicles])
+
+
+if len(master_connection.vehicles) == 1:
+    monitor_vehicle(master_connection.vehicles[0], args, queues[master_connection.vehicles[0]['id']])
+else:
+    for vehicle in master_connection.vehicles:
+        Thread(target=monitor_vehicle, args=(vehicle,args,sock,queues[vehicle['id']])).start()

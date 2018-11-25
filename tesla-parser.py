@@ -62,6 +62,32 @@ def output_maintenance(cur):
     subprocess.call(["ln", "-sf", fname, "%s/cur.json"%args.outdir])
 
 
+def outputit(this):
+    if this.usable_battery_level:
+        bat="%3d%%/%.2fM"%(this.usable_battery_level,this.battery_range)
+    else:
+        bat=""
+
+    if this.charge_energy_added:
+        add = "%5.2f/%.1fM"%(this.charge_energy_added, this.charge_miles_added)
+    else:
+        add = ""
+
+    if this.charge_rate:
+        rate = "%dkW/%dM"%(this.charger_power,this.charge_rate)
+    else:
+        rate=""
+
+    print("%s %-8s odo=%-7s spd=%-3s bat=%-12s chg@%-12s add=%s"%
+          (datetime.datetime.fromtimestamp(this.time).strftime('%Y-%m-%d %H:%M:%S'),
+           this.mode,
+           "%.2f"%this.odometer if this.odometer else "",
+           str(this.speed or ""),
+           bat,
+           rate,
+           add))
+
+
 firstthismode = None
 lastprevmode = None
 save = None
@@ -70,11 +96,13 @@ reallasttime = None
 
 for fname in args.files:
     with openfile(fname, args) as R:
+        linenum=0
         while True:
             line = R.readline()
+            linenum += 1
             if not line:
                 break
-            this = tesla_parselib.tesla_record(line)
+            this = tesla_parselib.tesla_record(line, want_offline=args.verbose>2)
 
             if not this:
                 continue
@@ -85,6 +113,8 @@ for fname in args.files:
 
             if this.mode == "Polling":
                 reallasttime = this.time
+                if args.verbose > 1:
+                    outputit(this)
                 continue
 
             if save:
@@ -92,22 +122,6 @@ for fname in args.files:
             else:
                 save = this
                 prev = this
-
-            if this.usable_battery_level:
-                bat="%3d%%/%.2fM"%(this.usable_battery_level,this.battery_range)
-            else:
-                bat=""
-
-            if this.charge_energy_added:
-                add = "%5.2f/%.1fM"%(this.charge_energy_added, this.charge_miles_added)
-            else:
-                add = ""
-
-            if this.charge_rate:
-                rate = "%dkW/%dM"%(this.charger_power,this.charge_rate)
-            else:
-                rate=""
-
 
             while firstthismode and not args.nosummary:
                 if firstthismode.mode != this.mode:
@@ -118,15 +132,26 @@ for fname in args.files:
 
                     firstthismodetime = datetime.datetime.fromtimestamp(firstthismode.time)
                     thistime = datetime.datetime.fromtimestamp(save.time)
-                    if firstthismode.mode == "Charging":
+                    if not lastprevmode or not lastprevmode.usable_battery_level or not lastprevmode.odometer:
+                        print("%s            ending %s, but did not have previous state to compute deltas"%
+                              (firstthismodetime.strftime('%Y-%m-%d %H:%M:%S'), firstthismode.mode))
+                    elif firstthismode.mode == "Charging":
                         battery_range = save.battery_range if save.battery_range > lastthis.battery_range else lastthis.battery_range
+                        if this.usable_battery_level > save.usable_battery_level:
+                            usable_battery_level = this.usable_battery_level
+                        elif save.usable_battery_level > lastthis.usable_battery_level:
+                            usable_battery_level = save.usable_battery_level
+                        else:
+                            usable_battery_level = lastthis.usable_battery_level
+
                         usable_battery_level = save.usable_battery_level if save.usable_battery_level > lastthis.usable_battery_level else lastthis.usable_battery_level
                         dblevel = usable_battery_level - lastprevmode.usable_battery_level
 
-                        print("%s +%-16s Charged   %3d%% %5.2fkW %5.1fM (%3dmph, %4.1fkW %5.1fM max)"%
+                        print("%s +%-16s Charged   %3d%% (to %3d%%) %5.2fkW %5.1fM (%3dmph, %4.1fkW %5.1fM max)"%
                               (firstthismodetime.strftime('%Y-%m-%d %H:%M:%S'),
                                str(thistime-firstthismodetime),
                                dblevel,
+                               usable_battery_level,
                                save.charge_energy_added,
                                battery_range - lastprevmode.battery_range,
                                ((battery_range - lastprevmode.battery_range)*3600.0 /
@@ -143,7 +168,7 @@ for fname in args.files:
                         drange = lastprevmode.battery_range - battery_range
 
                         if dodo > -1:
-                            print("%s +%-16s Drove  %6.2fM at cost of %4.1f%% %5.1fM at %5.1f%% efficiency"%
+                            print("%s +%-16s Drove  %6.2fM at cost of %2.0f%% %5.1fM at %5.1f%% efficiency"%
                                   (firstthismodetime.strftime('%Y-%m-%d %H:%M:%S'),
                                    str(thistime-firstthismodetime),
                                    dodo,
@@ -152,9 +177,9 @@ for fname in args.files:
                                    dodo * 100.0 / drange if drange > 0 else -0))
                     elif firstthismode.mode == "Standby":
                         battery_range = save.battery_range if save.battery_range < lastthis.battery_range else lastthis.battery_range
-                        usable_battery_level = save.usable_battery_level if save.usable_battery_level < lastthis.usable_battery_level else lastthis.usable_battery_level
+                        usable_battery_level = lastthis.usable_battery_level
                         drange = lastprevmode.battery_range - battery_range
-                        print("%s +%-16s Sat&Lost %4.1f%% %5.1fM or %5.1fM/d"%
+                        print("%s +%-16s Sat&Lost %2.0f%% %5.1fM or %5.1fM/d"%
                               (firstthismodetime.strftime('%Y-%m-%d %H:%M:%S'),
                                str(thistime-firstthismodetime),
                                lastprevmode.usable_battery_level - usable_battery_level,
@@ -174,11 +199,4 @@ for fname in args.files:
             lastthis = save
 
             if args.verbose:
-                print("%s %-8s odo=%-7s spd=%-3s bat=%-12s chg@%-12s add=%s"%
-                      (datetime.datetime.fromtimestamp(this.time).strftime('%Y-%m-%d %H:%M:%S'),
-                       this.mode,
-                       "%.2f"%this.odometer if this.odometer else "",
-                       str(this.speed or ""),
-                       bat,
-                       rate,
-                       add))
+                outputit(this)
