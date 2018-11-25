@@ -177,8 +177,8 @@ def data_request(vehicle, type):
                 vdata = vehicle.data_request(type)
             vdata['retrevial_time'] = int(time.time())
             return vdata
-        except urllib2.HTTPError:
-            W.write('# Timed out or other error')
+        except urllib2.HTTPError as e:
+            W.write('# Timed out or other error: %s\n'%str(e))
         duration = 2.5 * cnt
         if duration > 3600:
             duration = 3600
@@ -191,8 +191,8 @@ def command(vehicle, *args, **kvargs):
         try:
             result = vehicle.command(*args, **kvargs)
             return result
-        except urllib2.HTTPError:
-            W.write('# Timed out or other error')
+        except urllib2.HTTPError as e:
+            W.write('# Timed out or other error: %s\n'%str(e))
         duration = 1.5 * cnt
         if duration > 3600:
             duration = 3600
@@ -219,8 +219,8 @@ def wake(vehicle):
         # Pretty common to time out here, so let it
         try:
             vehicle.wake_up()
-        except urllib2.HTTPError:
-            W.write("# Timed out\n")
+        except urllib2.HTTPError as e:
+            W.write("# Timed out: %s\n"%str(e))
             # Rate limitation on wake-ups
         duration = 2.5 * wake_tries
         if duration > 3600:
