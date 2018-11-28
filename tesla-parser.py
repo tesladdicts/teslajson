@@ -74,7 +74,7 @@ def outputit(this):
         add = ""
 
     if this.charge_rate:
-        rate = "%dkW/%dM"%(this.charger_power,this.charge_rate)
+        rate = "%dkW/%dM"%(this.charger_power or 0,this.charge_rate)
     else:
         rate=""
 
