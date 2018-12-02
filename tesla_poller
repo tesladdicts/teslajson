@@ -160,13 +160,19 @@ def handle_queue(v, q, data, outs):
         wake(v)
         message="# %d Command processing: "%time.time()
 
+        if "autoresetlimit" not in dvar or not dvar["autoresetlimit"]:
+            autoresetlimit = data['charge_state']['charge_limit_soc']
+        else:
+            autoresetlimit = -1
+
         # Set charge level
         if level:
             command(v, "set_charge_limit", {"percent": level})
-            outs['reset_charge_limit'] = data['charge_state']['charge_limit_soc']
-            message += "Charge limit set to %d from %d. "%(level, outs['reset_charge_limit'])
+            if autoresetlimit > 0:
+                outs['reset_charge_limit'] = autoresetlimit
+            message += "Charge limit set to %d from %d (w/reset %d). "%(level, outs['reset_charge_limit'], autoresetlimit)
             if args.verbose:
-                print("# %d Setting charge limit to %d (Saved limit is %d)"%(time.time(),level,outs['reset_charge_limit']))
+                print("# %d Setting charge limit to %d (Reset limit is %d)"%(time.time(),level,autoresetlimit))
 
         # Set A/C state
         if temp:
@@ -194,6 +200,7 @@ def handle_outstanding(v, data, outs):
             if data["drive_state"]["shift_state"] is not None:
                 if args.verbose:
                     print("# %d Resetting charge limit to %d"%(time.time(), outs["reset_charge_limit"]))
+                W.write("# %d Resetting charge limit to %d"%(time.time(), outs["reset_charge_limit"]))
                 command(v, "set_charge_limit", {"percent": outs["reset_charge_limit"]})
                 del(outs["reset_charge_limit"])
 
@@ -323,7 +330,7 @@ def monitor_sleep(vehicle, queue, data, outstanding, stime):
 def monitor_vehicle(vehicle, args, queue):
     """Monitor a vehicle, forever, printing json about current status"""
 
-    state = "Unknown"
+    state = args.state
     backoff = 1
     last_all = 0
     last_active = 0
@@ -384,7 +391,10 @@ def monitor_vehicle(vehicle, args, queue):
                 if vdata["state"] in ("asleep","offline","inactive"):
                     # Car is asleep
                     state = "inactive"
-                elif state == "inactive":
+                elif state == "to_sleep":
+                    # We were trying to go to sleep but did not, why?
+                    state = "Unknown"
+                elif state == "inactive" and what != 'all':
                     # Car was asleep, figure out what it is doing now
                     state = "Unknown"
                 else:
@@ -446,6 +456,7 @@ parser.add_argument('--token', default=None, help='Access token for tesla servic
 parser.add_argument('--refreshtoken', default=None, help='Access token generator')
 parser.add_argument('--tokenexpire', default=None, help='When does access token expire')
 parser.add_argument('--tokenfile', default=None, help='File containing access token json for tesla service')
+parser.add_argument('--state', default="Unknown", help="Start by assuming we are in named state")
 parser.add_argument('--outdir', default=None, help='Directory to output log files')
 parser.add_argument('--cmd_address', default=None, help='address:Port number to receive UDP commands on')
 args = parser.parse_args()
