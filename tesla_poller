@@ -3,7 +3,6 @@ import teslajson
 import time
 import json
 import traceback
-import urllib2
 import argparse
 from threading import Thread, Lock
 import sys
@@ -20,39 +19,6 @@ master_lock = Lock()
 # Time intervals of importance to program operation
 intervals = { "inactive": 60, "to_sleep": 665, "charging": 90, "running": 30, "recent": 60, "prep": 60, "Unknown": 15, "any_poll": 10000, "running_poll": 300, "charging_poll": 900, "recent_interval": 500 }
 
-
-
-def update_tokens(tokens=None, R=None):
-    """Update credentials (probably should be moved to teslajson)"""
-
-    if not tokens:
-        tokens = json.load(R)
-
-    args.token = tokens["access_token"]
-    args.refreshtoken = tokens["refresh_token"]
-    args.tokenexpire = tokens["created_at"] + tokens["expires_in"]
-
-    if master_connection:
-        master_connection._sethead(args.token)
-
-
-
-def monitor_expirey():
-    """Check for credential expiry (probably should be moved to teslajson)"""
-    if args.tokenexpire and args.refreshtoken and time.time() > (args.tokenexpire - 86400):
-        if args.verbose:
-            print("# %d Trying Refresh"%time.time())
-        try:
-            tokes = master_connection.refresh_token(args.refreshtoken)
-        except Exception as e:
-            raise e
-        if args.verbose:
-            print("# %d Refresh with %s"%(time.time(), tokes))
-        update_tokens(tokens=tokes)
-        if args.tokenfile:
-            with open(args.tokenfile, "w") as W:
-                W.write(json.dumps(tokes))
-                print("# %d Toke Written"%time.time())
 
 
 def monitor_socket(sock, queues, vlist):
@@ -235,7 +201,7 @@ def output_maintenance():
 def refresh_vehicles(args, debug=False):
     """Connect to service and get list of vehicles"""
 
-    c = teslajson.Connection(access_token=args.token, debug=debug)
+    c = teslajson.Connection(access_token=args.token, tokens_file=args.tokenfile, retries=10, debug=debug)
     if args.verbose:
         print("# %d Vehicles: %s\n"%(time.time(), str(c.vehicles)))
     return c
@@ -244,41 +210,22 @@ def refresh_vehicles(args, debug=False):
 
 def data_request(vehicle, type, datawrap=None):
     """Get data from the vehicle, with retries on failure"""
-    for cnt in range(1, 10):
-        try:
-            if type == "all":
-                vdata = vehicle.data_all()
-            else:
-                vdata = vehicle.data_request(type)
-                if type and datawrap:
-                    ndata = dict(datawrap)
-                    ndata[type] = vdata
-                    vdata = ndata
-            vdata['retrevial_time'] = int(time.time())
-            return vdata
-        except urllib2.HTTPError as e:
-            W.write('# %d Timed out or other error for %s: %s\n'%(time.time(),type,str(e)))
-        duration = 2.5 * cnt
-        if duration > 600:
-            duration = 600
-        time.sleep(duration)
-    raise Exception("Data request %s failed @ %d"%(type, time.time()))
+    if type == "all":
+        vdata = vehicle.data_all()
+    else:
+        vdata = vehicle.data_request(type)
+        if type and datawrap:
+            ndata = dict(datawrap)
+            ndata[type] = vdata
+            vdata = ndata
+    vdata['retrevial_time'] = int(time.time())
+    return vdata
 
 
 
 def command(vehicle, *args, **kvargs):
     """Run a command on the vehicle, with retries on failure"""
-    for cnt in range(1, 10):
-        try:
-            result = vehicle.command(*args, **kvargs)
-            return result
-        except urllib2.HTTPError as e:
-            W.write('# %d Timed out or other error for %s: %s\n'%(time.time(),args[0],str(e)))
-        duration = 1.5 * cnt
-        if duration > 600:
-            duration = 600
-        time.sleep(duration)
-    raise Exception("Command %s failed @ %d"%(str(args),time.time()))
+    return vehicle.command(*args, **kvargs)
 
 
 
@@ -299,16 +246,7 @@ def wake(vehicle):
         if args.verbose:
             W.write("# Waking... (%d times so far) at %d\n"%(wake_tries,time.time()))
 
-        # Pretty common to time out here, so let it
-        try:
-            vehicle.wake_up()
-        except urllib2.HTTPError as e:
-            W.write("# %d Timed out: %s\n"%(time.time(),str(e)))
-            # Rate limitation on wake-ups
-        duration = 2.5 * wake_tries
-        if duration > 600:
-            duration = 600
-        time.sleep(duration)
+        vehicle.wake_up()
 
     W.write("# Could not wake %s\n"%vehicle['display_name'])
     return None
@@ -348,9 +286,6 @@ def monitor_vehicle(vehicle, args, queue):
             while True:
                 # Handle output file
                 output_maintenance()
-
-                # Handle authentication updates
-                monitor_expirey()
 
                 if state == "Unknown":
                     what = "all"
@@ -469,10 +404,6 @@ if not args.token and not args.tokenfile:
 
 # Let us see where we are stalled
 faulthandler.register(signal.SIGUSR1) #pylint: disable=no-member
-
-if args.tokenfile:
-    with open(args.tokenfile, "r") as R:
-        update_tokens(R=R)
 
 if args.intervals:
     args.intervals = dict(args.intervals)
