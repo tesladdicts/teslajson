@@ -34,7 +34,8 @@ class Connection(object):
             access_token='',
             proxy_url = '',
             proxy_user = '',
-            proxy_password = ''):
+            proxy_password = '',
+            debug = False):
         """Initialize connection object
         
         Sets the vehicles field, a list of Vehicle objects
@@ -53,6 +54,8 @@ class Connection(object):
         self.proxy_url = proxy_url
         self.proxy_user = proxy_user
         self.proxy_password = proxy_password
+        self.debug = debug
+        self.debuglevel = 1 if debug else 0
         self.head = {}
         tesla_client = self.__open("/raw/0a8e0xTJ", baseurl="http://pastebin.com")
         self.current_client = tesla_client['v1']
@@ -132,8 +135,7 @@ class Connection(object):
                 handler = ProxyHandler({'https': self.proxy_url})
                 opener = build_opener(handler)
         else:
-#            opener = build_opener(HTTPSHandler(debuglevel=1))
-            opener = build_opener()
+            opener = build_opener(HTTPSHandler(debuglevel=self.debuglevel))
         resp = opener.open(req)
         charset = resp.info().get('charset', 'utf-8')
         return json.loads(resp.read().decode(charset))
