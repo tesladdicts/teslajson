@@ -37,14 +37,14 @@ class Connection(object):
             proxy_password = '',
             debug = False):
         """Initialize connection object
-        
+
         Sets the vehicles field, a list of Vehicle objects
         associated with your account
 
         Required parameters:
         email: your login for teslamotors.com
         password: your password for teslamotors.com
-        
+
         Optional parameters:
         access_token: API access token
         proxy_url: URL for proxy server
@@ -75,11 +75,11 @@ class Connection(object):
                 "password" : password }
             self.expiration = 0 # force refresh
         self.vehicles = [Vehicle(v, self) for v in sorted(self.get('vehicles')['response'], key=lambda d: d['id'])]
-    
+
     def get(self, command):
         """Utility command to get data from API"""
         return self.post(command, None)
-    
+
     def post(self, command, data={}):
         """Utility command to post data to API"""
         now = calendar.timegm(datetime.datetime.now().timetuple())
@@ -88,7 +88,7 @@ class Connection(object):
             self._sethead(auth['access_token'],
                            auth['created_at'] + auth['expires_in'] - 86400)
         return self.__open("%s%s" % (self.api, command), headers=self.head, data=data)
-    
+
     def __user_agent(self):
         if not "User-Agent" in self.head:
             self.head["User-Agent"] = 'teslajson.py 1.3.1'
@@ -108,7 +108,7 @@ class Connection(object):
         self.head = {}
         return self.__open("/oauth/token", data=self.oauth)
 
-    
+
     def __open(self, url, headers={}, data=None, baseurl=""):
         """Raw urlopen command"""
         if not baseurl:
@@ -139,28 +139,28 @@ class Connection(object):
         resp = opener.open(req)
         charset = resp.info().get('charset', 'utf-8')
         return json.loads(resp.read().decode(charset))
-        
+
 
 class Vehicle(dict):
     """Vehicle class, subclassed from dictionary.
-    
+
     There are 3 primary methods: wake_up, data_request and command.
     data_request and command both require a name to specify the data
     or command, respectively. These names can be found in the
     Tesla JSON API."""
     def __init__(self, data, connection):
         """Initialize vehicle class
-        
+
         Called automatically by the Connection class
         """
         super(Vehicle, self).__init__(data)
         self.connection = connection
-    
+
     def data_all(self):
         """Get all vehicle data"""
         result = self.get('data')
         return result['response']
-    
+
     def data_request(self, name):
         """Get vehicle data"""
         if name:
@@ -168,22 +168,22 @@ class Vehicle(dict):
         else:
             result = self.get(name)
         return result['response']
-    
+
     def wake_up(self):
         """Wake the vehicle"""
         return self.post('wake_up')
-    
+
     def command(self, name, data={}):
         """Run the command for the vehicle"""
         return self.post('command/%s' % name, data)
-    
+
     def get(self, command):
         """Utility command to get data from API"""
         if command:
             return self.connection.get('vehicles/%i/%s' % (self['id'], command))
         else:
             return self.connection.get('vehicles/%i' % (self['id']))
-    
+
     def post(self, command, data={}):
         """Utility command to post data to API"""
         return self.connection.post('vehicles/%i/%s' % (self['id'], command), data)
