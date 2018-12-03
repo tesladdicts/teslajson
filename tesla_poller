@@ -17,7 +17,7 @@ master_connection = None
 master_lock = Lock()
 
 # Time intervals of importance to program operation
-intervals = { "inactive": 60, "to_sleep": 665, "charging": 90, "running": 30, "recent": 60, "prep": 60, "Unknown": 15, "any_poll": 10000, "running_poll": 300, "charging_poll": 900, "recent_interval": 500 }
+intervals = { "inactive": 60, "to_sleep": 150, "charging": 90, "running": 30, "recent": 60, "prep": 60, "Unknown": 15, "any_poll": 10000, "running_poll": 300, "charging_poll": 900, "recent_interval": 500 }
 
 
 
@@ -201,7 +201,7 @@ def output_maintenance():
 def refresh_vehicles(args, debug=False):
     """Connect to service and get list of vehicles"""
 
-    c = teslajson.Connection(access_token=args.token, tokens_file=args.tokenfile, retries=10, debug=debug)
+    c = teslajson.Connection(email=args.email, password=args.password, access_token=args.token, tokens_file=args.tokenfile, proxy_url=args.proxy_url, proxy_user=args.proxy_user, proxy_password=args.proxy_password, retries=10, debug=debug)
     if args.verbose:
         print("# %d Vehicles: %s\n"%(time.time(), str(c.vehicles)))
     return c
@@ -386,11 +386,14 @@ def monitor_vehicle(vehicle, args, queue):
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--verbose', '-v', action='count', help='Increasing levels of verbosity')
-parser.add_argument('--intervals',action='append',type=lambda x: x.split('='), help="Set important intervals name=secs for names in inactive,active,charging,running,Unknown,sleep_poll,running_poll,recent")
-parser.add_argument('--token', default=None, help='Access token for tesla service')
-parser.add_argument('--refreshtoken', default=None, help='Access token generator')
-parser.add_argument('--tokenexpire', default=None, help='When does access token expire')
-parser.add_argument('--tokenfile', default=None, help='File containing access token json for tesla service')
+parser.add_argument('--intervals',action='append',type=lambda x: x.split('='), help="Set important intervals name=secs for names in %s"%str(intervals.keys()))
+parser.add_argument('--email', default=None, help='Tesla email for authentication option 1')
+parser.add_argument('--password', default=None, help='Tesla password for authentication option 1')
+parser.add_argument('--tokenfile', default=None, help='File containing access token json for tesla service, authentication option 2')
+parser.add_argument('--token', default=None, help='Access token for tesla service, authentication option 3')
+parser.add_argument('--proxy_url', default=None, help='URL for optional web proxy')
+parser.add_argument('--proxy_user', default=None, help='Username for optional web proxy')
+parser.add_argument('--proxy_password', default=None, help='Password for optional web proxy')
 parser.add_argument('--state', default="Unknown", help="Start by assuming we are in named state")
 parser.add_argument('--outdir', default=None, help='Directory to output log files')
 parser.add_argument('--cmd_address', default=None, help='address:Port number to receive UDP commands on')
