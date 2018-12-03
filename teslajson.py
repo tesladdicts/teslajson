@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """ Simple Python class to access the Tesla JSON API
 https://github.com/gglockner/teslajson
 
@@ -126,7 +127,7 @@ class Connection(object):
 
 
 
-    def _user_agent(self, agent='teslajson.py 1.3.1'):
+    def _user_agent(self, agent='teslajson.py 1.3.1+sjr'):
         """Set the user agent"""
         if not "User-Agent" in self.head:
             self.head["User-Agent"] = agent
@@ -288,3 +289,71 @@ class Vehicle(dict):
     def post(self, command, data={}):
         """Utility command to post data to API"""
         return self.connection.post('vehicles/%i/%s' % (self['id'], command), data)
+
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(epilog="""Example of commands and arguments
+vehicles	# Get vehicle information (default command)
+get		# Get basic car data
+get data	# Get all data
+    charge_state, climate_state, drive_state, gui_settings, vehicle_state, mobile_enabled
+do wake_up, honk_horn, flash_lights, remote_state_drive ...
+do speed_limit_set_limit limit_mph=65
+...""")
+
+    parser.add_argument('--email', default=None, help='Tesla email for authentication option 1')
+    parser.add_argument('--password', default=None, help='Tesla password for authentication option 1')
+    parser.add_argument('--tokens_file', default=None, help='File containing access token json for tesla service, authentication option 2')
+    parser.add_argument('--access_token', default=None, help='Access token for tesla service, authentication option 3')
+    parser.add_argument('--proxy_url', default=None, help='URL for optional web proxy')
+    parser.add_argument('--proxy_user', default=None, help='Username for optional web proxy')
+    parser.add_argument('--proxy_password', default=None, help='Password for optional web proxy')
+    parser.add_argument('--retries', default=0, type=int, help='Number of retries on failure')
+    parser.add_argument('--retry_delay', default=1.5, type=float, help='Multiplicative backup on failure')
+    parser.add_argument('--debug', default=False, action='store_true', help='Example debugging')
+    parser.add_argument('--vid', default=None, help='Vehicle to operate on')
+
+    parser.add_argument('command', default='vehicles', nargs='?', help='Command for program (get, do)')
+    parser.add_argument('args', nargs='*', help='Command specific arguments')
+    args = parser.parse_args()
+
+    if not args.command:
+        args.command = "vehicles"
+
+    if args.command not in ('vehicles', 'get', 'do'):
+        raise ValueError('Invalidate command')
+
+    c = Connection(email=args.email, password=args.password, access_token=args.access_token, tokens_file=args.tokens_file, proxy_url=args.proxy_url, proxy_user=args.proxy_user, proxy_password=args.proxy_password, retries=args.retries, retry_delay=args.retry_delay, debug=args.debug)
+
+    if args.vid is not None:
+        try:
+            vnum = int(args.vid)
+            c.vehicles = [c.vehicles[vnum]]
+        except:
+            c.vehicles = filter(lambda v: v['id'] == args.vid, c.vehicles)
+
+    if len(c.vehicles) < 1:
+        raise ValueError('Invalid vehicle number or id')
+
+    for v in c.vehicles:
+        if args.command == "vehicles":
+            print(v["id"])
+        elif args.command == "get":
+            if not args.args:
+                print(str(v.data_request(None)))
+            elif args.args[0] == "data" or args.args[0] == "vehicle_data" or args.args[0] == "mobile_enabled":
+                print(str(v.get(args.args[0])))
+            else:
+                print(str(v.data_request(args.args[0])))
+        elif args.command == "do":
+            command = args.args[0]
+            data = dict([kv.split('=',1) for kv in args.args[1:]])
+            if command == "wake_up":
+                print(str(v.wake_up()))
+            else:
+                print(str(v.command(command, data)))
+        else:
+            raise ValueError("Unknown command %s"%args.command)
