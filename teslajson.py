@@ -41,6 +41,7 @@ class Connection(object):
                  proxy_password = '',
                  retries = 0,
                  retry_delay = 1.5,
+                 tesla_client = None,
                  debug = False):
         """Initialize connection object
 
@@ -80,8 +81,9 @@ class Connection(object):
         self.access_token = access_token
         self.refresh_token = None
 
-        # Obtain URL and program access tokens from pastebin
-        tesla_client = self.__open("/raw/0a8e0xTJ", baseurl="http://pastebin.com")
+        # Obtain URL and program access tokens from pastebin if not on CLI
+        if not tesla_client:
+            tesla_client = self.__open("/raw/0a8e0xTJ", baseurl="http://pastebin.com")
 
         self.current_client = tesla_client['v1']
 
@@ -317,6 +319,7 @@ do speed_limit_set_limit limit_mph=65
     parser.add_argument('--proxy_password', default=None, help='Password for optional web proxy')
     parser.add_argument('--retries', default=0, type=int, help='Number of retries on failure')
     parser.add_argument('--retry_delay', default=1.5, type=float, help='Multiplicative backup on failure')
+    parser.add_argument('--tesla_client', default=None, help='Override API retrevial from pastebin')
     parser.add_argument('--debug', default=False, action='store_true', help='Example debugging')
     parser.add_argument('--vid', default=None, help='Vehicle to operate on')
 

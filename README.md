@@ -5,7 +5,7 @@ Written by Greg Glockner
 
 ## Description
 This is a simple Python interface to the [Tesla JSON
-API](http://docs.timdorr.apiary.io/). With this, you can query your
+API](https://tesla-api.timdorr.com/). With this, you can query your
 vehicle, control charge settings, turn on the air conditioning, and
 more.  You can also embed this into other programs to automate these
 controls.
@@ -53,6 +53,7 @@ Optional parameters:
 - _proxy\_password_: password for proxy server
 - _retries_: number of times to retry request before failing
 - _retry\_delay_: multiplicative backoff on failure
+- _tesla\_client_: Override API retrevial from pastebin
 - _debug_: Activate HTTP debugging
 
 
@@ -85,6 +86,10 @@ in the [Tesla JSON API](http://docs.timdorr.apiary.io/).
 	v.wake_up()
 	v.data_request('charge_state')
 	v.command('charge_start')
+
+## Partial example:
+
+	c = teslajson.Connection(access_token='b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c', tesla_client='{"v1": {"id": "e4a9949fcfa04068f59abb5a658f2bac0a3428e4652315490b659d5ab3f35a9e", "secret": "c75f14bbadc8bee3a7594412c31416f8300256d7668ea7e6e7f06727bfb9d220", "baseurl": "https://owner-api.teslamotors.com", "api": "/api/1/"}}')
 
 ## Another example
 
