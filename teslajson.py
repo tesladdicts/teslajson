@@ -31,6 +31,9 @@ import warnings
 
 class Connection(object):
     """Connection to Tesla Motors API"""
+
+    __version__ = "1.4.0"
+
     def __init__(self,
                  email='',
                  password='',
@@ -133,10 +136,10 @@ class Connection(object):
 
 
 
-    def _user_agent(self, agent='teslajson.py 1.3.1+sjr'):
+    def _user_agent(self):
         """Set the user agent"""
         if not "User-Agent" in self.head:
-            self.head["User-Agent"] = agent
+            self.head["User-Agent"] = 'teslajson.py ' + self.__version__
 
 
 
