@@ -3,7 +3,7 @@
 https://github.com/gglockner/teslajson
 
 The Tesla JSON API is described at:
-http://docs.timdorr.apiary.io/
+https://tesla-api.timdorr.com/
 
 Example:
 
