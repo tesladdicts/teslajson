@@ -389,8 +389,8 @@ parser.add_argument('--verbose', '-v', action='count', help='Increasing levels o
 parser.add_argument('--intervals',action='append',type=lambda x: x.split('='), help="Set important intervals name=secs for names in %s"%str(intervals.keys()))
 parser.add_argument('--email', default=None, help='Tesla email for authentication option 1')
 parser.add_argument('--password', default=None, help='Tesla password for authentication option 1')
-parser.add_argument('--tokenfile', default=None, help='File containing access token json for tesla service, authentication option 2')
-parser.add_argument('--token', default=None, help='Access token for tesla service, authentication option 3')
+parser.add_argument('--tokenfile', '--tokens_file', default=None, help='File containing access token json for tesla service, authentication option 2')
+parser.add_argument('--token', '--access_token', default=None, help='Access token for tesla service, authentication option 3')
 parser.add_argument('--proxy_url', default=None, help='URL for optional web proxy')
 parser.add_argument('--proxy_user', default=None, help='Username for optional web proxy')
 parser.add_argument('--proxy_password', default=None, help='Password for optional web proxy')
@@ -401,8 +401,8 @@ args = parser.parse_args()
 
 W = None if args.outdir else sys.stdout
 
-if not args.token and not args.tokenfile:
-    print('''Must supply --token (or --tokenfile): Get access_token via:\ncurl -X POST -H "Cache-Control: no-cache" -H "Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW" -F "grant_type=password" -F "client_id=81527cff06843c8634fdc09e8ac0abefb46ac849f38fe1e431c2ef2106796384" -F "client_secret=c7257eb71a564034f9419ee651c7d0e5f7aa6bfbd18bafb5c5c033b093bb2fa3" -F "email=YOUR-TESLA-LOGIN-EMAIL@SOMEWHERE.COM" -F "password=YOUR-TESLA-ACCOUNT-PASSWORD" "https://owner-api.teslamotors.com/oauth/token''')
+if not args.token and not args.tokenfile and not args.password:
+    print('''Must supply --token or --tokenfile or --email and --password''')
     sys.exit(1)
 
 # Let us see where we are stalled
