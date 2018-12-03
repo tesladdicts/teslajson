@@ -25,6 +25,7 @@ except: # Python 2
     from urllib2 import ProxyHandler, HTTPBasicAuthHandler, HTTPHandler, HTTPSHandler, HTTPError
 import json
 import time
+import warnings
 
 
 
@@ -106,8 +107,11 @@ class Connection(object):
                 "password" : password }
 
         if self.tokens_file:
-            with open(self.tokens_file, "r") as R:
-                self._update_tokens(stream=R)
+            try:
+                with open(self.tokens_file, "r") as R:
+                    self._update_tokens(stream=R)
+            except IOError as e:
+                warnings.warn("Could not open file %s: %s (pressing on in hopes of alternate authenticaiton)"%(self.tokens_file, str(e)))
 
         self.vehicles = [Vehicle(v, self) for v in sorted(self.get('vehicles')['response'], key=lambda d: d['id'])]
 

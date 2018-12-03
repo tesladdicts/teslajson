@@ -88,7 +88,7 @@ in the [Tesla JSON API](http://docs.timdorr.apiary.io/).
 
 ## Another example
 
-	./teslajson.py --tokens_file /tmp/tesla.creds get
+	./teslajson.py --email my@email.com --pasword thepass --tokens_file /tmp/tesla.creds get
 	./teslajson.py --tokens_file /tmp/tesla.creds --vid 0 get
 	./teslajson.py --tokens_file /tmp/tesla.creds --retries 10 do wake_up
 	./teslajson.py --tokens_file /tmp/tesla.creds get climate_state
