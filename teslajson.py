@@ -18,11 +18,11 @@ v.command('charge_start')
 try: # Python 3
     from urllib.parse import urlencode
     from urllib.request import Request, build_opener
-    from urllib.request import ProxyHandler, HTTPBasicAuthHandler, HTTPHandler, HTTPSHandler, HTTPError
+    from urllib.request import ProxyHandler, HTTPBasicAuthHandler, HTTPHandler, HTTPSHandler, HTTPError, URLError
 except: # Python 2
     from urllib import urlencode
     from urllib2 import Request, build_opener
-    from urllib2 import ProxyHandler, HTTPBasicAuthHandler, HTTPHandler, HTTPSHandler, HTTPError
+    from urllib2 import ProxyHandler, HTTPBasicAuthHandler, HTTPHandler, HTTPSHandler, HTTPError, URLError
 import json
 import time
 import warnings
@@ -221,7 +221,7 @@ class Connection(object):
                 resp = opener.open(req)
                 charset = resp.info().get('charset', 'utf-8')
                 break
-            except HTTPError as e:
+            except (HTTPError, URLError) as e:
                 last_except = e
                 if self.debug:
                     print('# %d Timed out or other error for %s: %s\n'%(time.time(),type,str(e)))
