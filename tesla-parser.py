@@ -179,12 +179,24 @@ for fname in args.files:
                         battery_range = save.battery_range if save.battery_range < lastthis.battery_range else lastthis.battery_range
                         usable_battery_level = lastthis.usable_battery_level
                         drange = lastprevmode.battery_range - battery_range
-                        print("%s +%-16s Sat&Lost %2.0f%% %5.1fM or %5.1fM/d"%
+                        print("%s +%-16s Sat&Lost %2.0f%% %5.1fM or %5.1fM/d (to %3d%%)"%
                               (firstthismodetime.strftime('%Y-%m-%d %H:%M:%S'),
                                str(thistime-firstthismodetime),
                                lastprevmode.usable_battery_level - usable_battery_level,
                                drange,
-                               drange / (((thistime-firstthismodetime).total_seconds()) / 86400.0)))
+                               drange / (((thistime-firstthismodetime).total_seconds()) / 86400.0),
+                               usable_battery_level))
+                    elif firstthismode.mode == "Conditioning":
+                        battery_range = save.battery_range if save.battery_range < lastthis.battery_range else lastthis.battery_range
+                        usable_battery_level = lastthis.usable_battery_level
+                        drange = lastprevmode.battery_range - battery_range
+                        print("%s +%-16s Conditioned %2.0f%% %5.1fM or %5.1fM/d (to %3d%%)"%
+                              (firstthismodetime.strftime('%Y-%m-%d %H:%M:%S'),
+                               str(thistime-firstthismodetime),
+                               lastprevmode.usable_battery_level - usable_battery_level,
+                               drange,
+                               drange / (((thistime-firstthismodetime).total_seconds()) / 86400.0),
+                               usable_battery_level))
 
 
                     else:

@@ -25,12 +25,15 @@ class tesla_record(object):
         self.est_battery_range =	self._jget(["charge_state",  "est_battery_range"])
         self.shift_state =		self._jget(["drive_state",   "shift_state"])
         self.speed =			self._jget(["drive_state",   "speed"])
+        self.climate_on =		self._jget(["climate_state", "is_climate_on"])
         self.odometer =			self._jget(["vehicle_state", "odometer"])
 
         if self.charger_power > 0:
             self.mode = "Charging"
         elif self.shift_state and self.shift_state != "P":
             self.mode = "Driving"
+        elif self.climate_on:
+            self.mode = "Conditioning"
         elif self.charger_power is not None or self.odometer is not None:
             self.mode = "Standby"
         else:
