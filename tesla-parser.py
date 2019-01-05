@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# Print the data stored by telsa_poller
+# Print the data stored by tesla_poller
 #
 
 import argparse
