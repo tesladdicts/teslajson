@@ -20,7 +20,6 @@ class tesla_record(object):
         self.charger_power =		self._jget(["charge_state",  "charger_power"])
         self.charge_rate =		self._jget(["charge_state",  "charge_rate"])
         self.charger_voltage =		self._jget(["charge_state",  "charger_voltage"])
-        self.usable_battery_level =	self._jget(["charge_state",  "usable_battery_level"])
         self.battery_range =		self._jget(["charge_state",  "battery_range"])
         self.est_battery_range =	self._jget(["charge_state",  "est_battery_range"])
         self.shift_state =		self._jget(["drive_state",   "shift_state"])
