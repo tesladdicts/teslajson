@@ -1,0 +1,40 @@
+CREATE TABLE car (
+	car_id BIGINT NOT NULL,
+	vin CHAR(16) NOT NULL,
+	display_name VARCHAR(255) DEFAULT NULL,
+	car_type VARCHAR(64) DEFAULT NULL,
+	car_special_type VARCHAR(64) DEFAULT NULL,
+	perf_config VARCHAR(64) DEFAULT NULL, 
+	has_ludicrous_mode BOOLEAN DEFAULT NULL,
+	wheel_type VARCHAR(64) DEFAULT NULL,
+	has_air_suspension BOOLEAN DEFAULT NULL, 
+	exterior_color VARCHAR(64) DEFAULT NULL, 
+	PRIMARY KEY (car_id)
+);
+
+CREATE TABLE car_status (
+	ts TIMESTAMP NOT NULL,
+	car_id BIGINT REFERENCES car(car_id),
+	odometer REAL DEFAULT NULL,
+	shift_state CHAR(1) DEFAULT NULL,
+	speed SMALLINT DEFAULT NULL,
+	latitude DOUBLE PRECISION DEFAULT NULL,
+	longitude DOUBLE PRECISION DEFAULT NULL,
+	heading REAL DEFAULT NULL,
+	gps_as_of TIMESTAMP DEFAULT NULL,
+	charging_state VARCHAR(255) DEFAULT NULL,
+	battery_level SMALLINT DEFAULT NULL,
+	battery_range REAL DEFAULT NULL,
+	est_battery_range REAL DEFAULT NULL,
+	charge_rate REAL DEFAULT NULL,
+	miles_added REAL DEFAULT NULL,
+	energy_added REAL DEFAULT NULL,
+	charge_current_request REAL DEFAULT NULL,
+	charger_power REAL DEFAULT NULL,
+	charger_voltage REAL DEFAULT NULL,
+	inside_temp REAL DEFAULT NULL,
+	outside_temp REAL DEFAULT NULL,
+	climate_on BOOLEAN NOT NULL,
+	battery_heater BOOLEAN NOT NULL,
+	PRIMARY KEY (ts,car_id)
+);
