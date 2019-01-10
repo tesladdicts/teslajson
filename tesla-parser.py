@@ -7,6 +7,8 @@ import argparse
 import datetime
 import subprocess
 import tesla_parselib
+import json
+import psycopg2
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--verbose', '-v', action='count', help='Increasing levels of verbosity')
@@ -14,6 +16,7 @@ parser.add_argument('--nosummary', action='store_true', help='Do not print summa
 parser.add_argument('--follow', '-f', type=str, help='Follow this specific file')
 parser.add_argument('--numlines', '-n', type=str, help='Handle these number of lines')
 parser.add_argument('--outdir', default=None, help='Convert input files into daily output files')
+parser.add_argument('--dbconfig', '-d', type=str, help='Insert records in database using this config file')
 parser.add_argument('files', nargs='*')
 args = parser.parse_args()
 
@@ -22,6 +25,47 @@ if not args.numlines:
 
 if args.follow:
     args.files.append(None)
+
+if args.dbconfig:
+    # we are going to write data to the database
+    # read the config file and get database settings
+    dbfile = open(args.dbconfig, "r")
+    if dbfile:
+        dbinfo = json.loads(dbfile.read())
+        dbfile.close()
+        if 'host' in dbinfo:
+            host = dbinfo['host']
+        else:
+            host = "localhost"
+        if 'port' in dbinfo:
+            port = dbinfo['port']
+        else:
+            port = "5432"
+        if 'user' in dbinfo:
+            user = dbinfo['user']
+        else:
+            user = "teslauser"
+        if 'password' in dbinfo:
+            password = dbinfo['password']
+        else:
+            password = ""
+    # open the database
+    try:
+        conn_string = "host="+ host + " port=" + port + " dbname=tesladata  user=" + user +" password=" + password
+        dbconn = psycopg2.connect(conn_string)
+        cursor = dbconn.cursor()
+        cursor.execute("SELECT version();")
+        record = cursor.fetchone()
+        print("Connected to %s\n", record)
+    except (Exception, psycopg2.Error) as error :
+        print("Error while connecting to PostgreSQL", error)
+        exit()
+    if(dbconn):
+        cursor.close()
+        dbconn.close()
+        print("PostgreSQL connection closed\n")
+
+
 
 class openfile(object):
     """Open a file"""
@@ -212,3 +256,4 @@ for fname in args.files:
 
             if args.verbose:
                 outputit(this)
+
