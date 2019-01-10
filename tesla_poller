@@ -129,14 +129,14 @@ def handle_queue(v, q, data, outs):
         if "autoresetlimit" not in dvar or not dvar["autoresetlimit"]:
             autoresetlimit = data['charge_state']['charge_limit_soc']
         else:
-            autoresetlimit = -1
+            autoresetlimit = int(dvar["autoresetlimit"])
 
         # Set charge level
         if level:
             command(v, "set_charge_limit", {"percent": level})
             if autoresetlimit > 0:
                 outs['reset_charge_limit'] = autoresetlimit
-            message += "Charge limit set to %d from %d (w/reset %d). "%(level, outs['reset_charge_limit'], autoresetlimit)
+            message += "Charge limit set to %d from %d (w/reset %d). "%(level, outs['reset_charge_limit'] if 'reset_charge_limit' in outs else -1, autoresetlimit)
             if args.verbose:
                 print("# %d Setting charge limit to %d (Reset limit is %d)"%(time.time(),level,autoresetlimit))
 
