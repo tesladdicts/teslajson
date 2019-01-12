@@ -1,6 +1,6 @@
 CREATE TABLE vehicle (
 	vehicle_id BIGINT NOT NULL,
-	vin CHAR(16) NOT NULL,
+	vin CHAR(17) NOT NULL,
 	display_name VARCHAR(255) DEFAULT NULL,
 	car_type VARCHAR(64) DEFAULT NULL,
 	car_special_type VARCHAR(64) DEFAULT NULL,
