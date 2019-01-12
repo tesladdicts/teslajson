@@ -1,5 +1,5 @@
-CREATE TABLE car (
-	car_id BIGINT NOT NULL,
+CREATE TABLE vehicle (
+	vehicle_id BIGINT NOT NULL,
 	vin CHAR(16) NOT NULL,
 	display_name VARCHAR(255) DEFAULT NULL,
 	car_type VARCHAR(64) DEFAULT NULL,
@@ -9,13 +9,18 @@ CREATE TABLE car (
 	wheel_type VARCHAR(64) DEFAULT NULL,
 	has_air_suspension BOOLEAN DEFAULT NULL, 
 	exterior_color VARCHAR(64) DEFAULT NULL, 
-	PRIMARY KEY (car_id)
+	option_codes VARCHAR(1000) DEFAULT NULL,
+	car_version VARCHAR(64) DEFAULT NULL,
+	PRIMARY KEY (vehicle_id)
 );
 
-CREATE TABLE car_status (
+CREATE TABLE vehicle_status (
 	ts TIMESTAMP NOT NULL,
-	car_id BIGINT REFERENCES car(car_id),
+	vehicle_id BIGINT REFERENCES vehicle(vehicle_id),
+	state VARCHAR(16) DEFAULT NULL,
+	car_locked BOOLEAN NOT NULL,
 	odometer REAL DEFAULT NULL,
+	is_user_present BOOLEAN NOT NULL,
 	shift_state CHAR(1) DEFAULT NULL,
 	speed SMALLINT DEFAULT NULL,
 	latitude DOUBLE PRECISION DEFAULT NULL,
@@ -36,5 +41,6 @@ CREATE TABLE car_status (
 	outside_temp REAL DEFAULT NULL,
 	climate_on BOOLEAN NOT NULL,
 	battery_heater BOOLEAN NOT NULL,
-	PRIMARY KEY (ts,car_id)
+	valet_mode BOOLEAN DEFAULT NULL,
+	PRIMARY KEY (ts,vehicle_id)
 );
