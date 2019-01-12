@@ -138,19 +138,25 @@ save = None
 lastthis = None
 reallasttime = None
 
+# loop over all files
 for fname in args.files:
     with openfile(fname, args) as R:
         linenum=0
+        # loop over all json records (one per line)
         while True:
+	    # read a line
             line = R.readline()
             linenum += 1
             if not line:
                 break
+	    # parse the json into 'this' object
             this = tesla_parselib.tesla_record(line, want_offline=args.verbose>2)
 
+            # if no valid object move on to the next
             if not this:
                 continue
 
+            # output data to file in outdir
             if args.outdir:
                 output_maintenance(this.time)
                 X.write(line)
@@ -167,6 +173,7 @@ for fname in args.files:
                 save = this
                 prev = this
 
+            # analyze data and provide a summary
             while firstthismode and not args.nosummary:
                 if firstthismode.mode != this.mode:
 
