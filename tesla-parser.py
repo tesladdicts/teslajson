@@ -159,9 +159,12 @@ for fname in args.files:
             # if we are using the database fill it up!
             if args.dbconfig:
 	        # check if this vehicle_id is already in the vehicle table
-#	        try:
-		query = 'SELECT * FROM vehicle WHERE vehicle_id={};'.format(this.vehicle_id)
-		cursor.execute(query)
+	        try:
+		    query = 'SELECT * FROM vehicle WHERE vehicle_id={};'.format(this.vehicle_id)
+		    cursor.execute(query)
+		except (Exception, psycopg2.Error) as error :
+		    if(dbconn):
+			print("Failed to query vehicle table", error)
 		if cursor.rowcount<1:
 		    print ("rowcount ",cursor.rowcount)
 		    # this is the first time we've seen this car, add it
@@ -257,6 +260,8 @@ for fname in args.files:
 			        print("Failed to insert record into vehicle table", error)
 		    # add a new vehicle_status row
 		    query = 'INSERT INTO vehicle_status (ts, vehicle_id, state, car_locked, odometer, is_user_present, shift_state, speed, latitude, longitude, heading, gps_as_of, charging_state, battery_level. battery_range, est_battery_range, charge_rate, miles_added, energy_added, charge_current_request. charger_power, charger_voltage, inside_temp, outside_temp, climate_on, battery_heater, valet_mode) VALUES '
+		# as we are inserting data into the database we do nothing else with this record
+		continue
 
             # output data to file in outdir
             if args.outdir:
