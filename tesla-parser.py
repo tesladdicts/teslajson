@@ -56,14 +56,14 @@ if args.dbconfig:
         cursor = dbconn.cursor()
         cursor.execute("SELECT version();")
         record = cursor.fetchone()
-        print("Connected to %s\n", record)
+        print 'Connected to {}\n'.format(str(record[0]))
     except (Exception, psycopg2.Error) as error :
         print("Error while connecting to PostgreSQL", error)
         exit()
-    if(dbconn):
-        cursor.close()
-        dbconn.close()
-        print("PostgreSQL connection closed\n")
+#    if(dbconn):
+#        cursor.close()
+#        dbconn.close()
+#        print("PostgreSQL connection closed\n")
 
 
 
@@ -155,6 +155,108 @@ for fname in args.files:
             # if no valid object move on to the next
             if not this:
                 continue
+
+            # if we are using the database fill it up!
+            if args.dbconfig:
+	        # check if this vehicle_id is already in the vehicle table
+#	        try:
+		query = 'SELECT * FROM vehicle WHERE vehicle_id={};'.format(this.vehicle_id)
+		cursor.execute(query)
+		if cursor.rowcount<1:
+		    print ("rowcount ",cursor.rowcount)
+		    # this is the first time we've seen this car, add it
+		    query = "INSERT INTO vehicle (vehicle_id, vin, display_name, car_type, car_special_type, perf_config, has_ludicrous_mode, wheel_type, has_air_suspension, exterior_color, option_codes, car_version) VALUES"+this.sql_vehicle_value()+";"
+		    #print query
+		    try:
+		        cursor.execute(query)
+		        dbconn.commit()
+		    except (Exception, psycopg2.Error) as error :
+		        if(dbconn):
+			    print("Failed to insert record into vehicle table", error)
+	        else:
+		    # we've already got this car, check if anything changed
+		    res = cursor.fetchone()
+		    updateargs = ""
+		    # we assume vin will never change, so we don't check on it
+		    # if attributes are in json, check to see if they have changed
+		    if res[2] != this.display_name:
+		        print 'This car\'s name has changed from \'{}\' to \'{}\'!\n'.format(res[2], this.display_name)		        
+		        updateargs = " display_name = '" + this.display_name + "'"
+		    # check car_type
+		    if this.car_type is not None :
+		        if res[3] != this.car_type:
+		            print 'car_type has changed from \'{}\' to \'{}\'!\n'.format(res[3], this.car_type)
+		            if( len(updateargs) > 1 ):
+		                updateargs = updateargs + ","
+		            updateargs = updateargs + " car_type = '" + this.car_type + "'"
+		    # check car_special_type
+		    if this.car_special_type is not None :
+		        if res[4] != this.car_special_type:
+		            print 'car_special_type has changed from \'{}\' to \'{}\'!\n'.format(res[4], this.car_special_type)
+		            if( len(updateargs) > 1 ):
+		                updateargs = updateargs + ","
+		            updateargs = updateargs + " car_special_type = '" + this.car_special_type + "'"
+		    # check perf_config
+		    if this.perf_config is not None :
+		        if res[5] != this.perf_config:
+		            print 'perf_config has changed from \'{}\' to \'{}\'!\n'.format(res[5], this.perf_config)
+		            if( len(updateargs) > 1 ):
+		                updateargs = updateargs + ","
+		            updateargs = updateargs + " perf_config = '" + this.perf_config + "'"
+		    # check has_ludicrous_mode
+		    if this.has_ludicrous_mode is not None :
+			if res[6] != this.has_ludicrous_mode:
+		            print 'has_ludicrous_mode has changed from \'{}\' to \'{}\'!\n'.format(res[6], this.has_ludicrous_mode)
+		            if( len(updateargs) > 1 ):
+		                updateargs = updateargs + ","
+		            updateargs = updateargs + " has_ludicrous_mode = " + str(this.has_ludicrous_mode)
+		    # check wheel_type
+		    if this.wheel_type is not None :
+		        if res[7] != this.wheel_type:
+		            print 'wheel_type has changed from \'{}\' to \'{}\'!\n'.format(res[7], this.wheel_type)
+		            if( len(updateargs) > 1 ):
+		                updateargs = updateargs + ","
+		            updateargs = updateargs + " wheel_type = '" + this.wheel_type + "'"
+		    # check has_air_suspension
+		    if this.has_air_suspension is not None :
+			if res[8] != this.has_air_suspension:
+		            print 'has_ludicrous_mode has changed from \'{}\' to \'{}\'!\n'.format(res[8], this.has_air_suspension)
+		            if( len(updateargs) > 1 ):
+		                updateargs = updateargs + ","
+		            updateargs = updateargs + " has_air_suspension = " + str(this.has_air_suspension)
+		    # check exterior_color
+		    if this.exterior_color is not None :
+		        if res[9] != this.exterior_color:
+		            print 'exterior_color has changed from \'{}\' to \'{}\'!\n'.format(res[9], this.exterior_color)
+		            if( len(updateargs) > 1 ):
+		                updateargs = updateargs + ","
+		            updateargs = updateargs + " exterior_color = '" + this.exterior_color + "'"
+		    # check option_codes
+		    if this.option_codes is not None :
+		        if res[10] != this.option_codes:
+		            print 'option_codes has changed from \'{}\' to \'{}\'!\n'.format(res[10], this.option_codes)
+		            if( len(updateargs) > 1 ):
+		                updateargs = updateargs + ","
+		            updateargs = updateargs + " option_codes = '" + this.option_codes + "'"
+		    # check car_version
+		    if this.car_version is not None :
+		        if res[11] != this.car_version:
+		            print 'car_version has changed from \'{}\' to \'{}\'!\n'.format(res[11], this.car_version)
+		            if( len(updateargs) > 1 ):
+		                updateargs = updateargs + ","
+		            updateargs = updateargs + " car_version = '" + this.car_version + "'"
+		    # update the row if needed
+		    if( len(updateargs) > 1 ):
+		        query = 'UPDATE vehicle SET {} WHERE vehicle_id = {};'.format( updateargs, this.vehicle_id)
+		        print query
+		        try:
+		            cursor.execute(query)
+		            dbconn.commit()
+		        except (Exception, psycopg2.Error) as error :
+		            if(dbconn):
+			        print("Failed to insert record into vehicle table", error)
+		    # add a new vehicle_status row
+		    query = 'INSERT INTO vehicle_status (ts, vehicle_id, state, car_locked, odometer, is_user_present, shift_state, speed, latitude, longitude, heading, gps_as_of, charging_state, battery_level. battery_range, est_battery_range, charge_rate, miles_added, energy_added, charge_current_request. charger_power, charger_voltage, inside_temp, outside_temp, climate_on, battery_heater, valet_mode) VALUES '
 
             # output data to file in outdir
             if args.outdir:
