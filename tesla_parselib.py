@@ -47,8 +47,8 @@ class tesla_record(object):
         self.wheel_type =		self._jget(["vehicle_config", "wheel_type"])
         self.has_air_suspension =	self._jget(["vehicle_config", "has_air_suspension"])
         self.exterior_color =		self._jget(["vehicle_config", "exterior_color"])
-        self.option_codes =		self._jget(["vehicle_config", "option_codes"])
-        self.car_version =		self._jget(["vehicle_config", "car_version"])
+        self.option_codes =		self.jline["option_codes"]
+        self.car_version =		self._jget(["vehicle_state", "car_version"])
         
 
         if self.charger_power > 0:
@@ -103,3 +103,60 @@ class tesla_record(object):
                 return notfound
             info = info[key]
         return info
+
+    def sql_vehicle_value(self):
+        result = '({id},\'{vin}\''.format(id=self.vehicle_id, vin=self.vin)
+	if self.display_name:
+	    result = result + ",\'" + self.display_name + "\'"
+	else:
+	    result = result + ",NULL"
+	if self.car_type:
+	    result = result + ",\'" + self.car_type + "\'"
+	else:
+	    result = result + ",NULL"
+	if self.car_special_type:
+	    result = result + ",\'" + self.car_special_type + "\'"
+	else:
+	    result = result + ",NULL"
+        if self.perf_config:
+	    result = result + ",\'" + self.perf_config + "\'"
+	else:
+	    result = result + ",NULL"
+	if self.has_ludicrous_mode is None:
+	    result = result + ",NULL"
+	else:
+	    if self.has_ludicrous_mode:
+	        result = result + ",TRUE"
+	    else:
+	        result = result + ",FALSE"
+        if self.wheel_type:
+	    result = result + ",\'" + self.wheel_type + "\'"
+	else:
+	    result = result + ",NULL"
+	if self.has_air_suspension is None:
+	    result = result + ",NULL"
+        else:
+	    if self.has_air_suspension:
+                result = result + ",TRUE"
+	    else:
+	        result = result + ",FALSE"
+	if self.exterior_color:
+	    result = result + ",\'" + self.exterior_color + "\'"
+        else:
+	    result = result + ",NULL"
+	if self.option_codes:
+	    result = result + ",\'" + self.option_codes + "\'"
+        else:
+	    result = result + ",NULL"
+        if self.car_version:
+	    result = result + ",\'" + self.car_version + "\')"
+	else:
+	    result = result + ",NULL)"
+        return result
+
+
+    def sql_vehicle_status_value(self):
+        result = '({}'.format(self.vehicle_id)
+        result = result + ')'
+        return result
+      
