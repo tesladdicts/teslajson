@@ -5,6 +5,9 @@
 
 import json
 import copy
+from datetime import datetime
+import tzlocal
+
 
 class tesla_record(object):
     """Abbreviated information about a specific record retrieved from a tesla"""
@@ -15,7 +18,7 @@ class tesla_record(object):
         self.time = 			self.jline["retrevial_time"]
         self.vehicle_id = 		self.jline["vehicle_id"]
         self.state = 			self.jline["state"]
-        self.car_locked = 		self._jget(["vehicle_state", "locaked"])
+        self.car_locked = 		self._jget(["vehicle_state", "locked"])
         self.odometer =			self._jget(["vehicle_state", "odometer"])
         self.is_user_present =		self._jget(["vehicle_state", "is_user_present"])
         self.charging_state =		self._jget(["charge_state",  "charging_state"])
@@ -220,7 +223,48 @@ class tesla_record(object):
 
 
     def sql_vehicle_status_insert_str(self):
-        result = '({}'.format(self.vehicle_id)
+        # make unixtime into date and time
+        unix_timestamp = float(self.time)
+        local_timezone = tzlocal.get_localzone()
+        local_time = datetime.fromtimestamp(unix_timestamp, local_timezone)
+        ts_str = local_time.strftime("%Y-%m-%d %H:%M:%S")
+        result = '(\'{}\',{},\'{}\''.format(ts_str, self.vehicle_id, self.state, )
+        if self.car_locked is None :
+	    result = result + ",NULL"
+	else :
+	    result = result + ',{}'.format(str(self.car_locked))
+        if self.odometer is None :
+	    result = result + ",NULL"
+	else :
+	    result = result + ',{}'.format(str(self.odometer))
+        if self.is_user_present is None :
+	    result = result + ",NULL"
+	else :
+	    result = result + ',{}'.format(str(self.is_user_present))
+        if self.shift_state is None :
+	    result = result + ",NULL"
+	else :
+	    result = result + ',\'{}\''.format(self.shift_state)
+#	speed SMALLINT DEFAULT NULL,
+#	latitude DOUBLE PRECISION DEFAULT NULL,
+#	longitude DOUBLE PRECISION DEFAULT NULL,
+#	heading REAL DEFAULT NULL,
+#	gps_as_of TIMESTAMP DEFAULT NULL,
+#	charging_state VARCHAR(255) DEFAULT NULL,
+#	battery_level SMALLINT DEFAULT NULL,
+#	battery_range REAL DEFAULT NULL,
+#	est_battery_range REAL DEFAULT NULL,
+#	charge_rate REAL DEFAULT NULL,
+#	miles_added REAL DEFAULT NULL,
+#	energy_added REAL DEFAULT NULL,
+#	charge_current_request REAL DEFAULT NULL,
+#	charger_power REAL DEFAULT NULL,
+#	charger_voltage REAL DEFAULT NULL,
+#	inside_temp REAL DEFAULT NULL,
+#	outside_temp REAL DEFAULT NULL,
+#	climate_on BOOLEAN NOT NULL,
+#	battery_heater BOOLEAN NOT NULL,
+#	valet_mode BOOLEAN DEFAULT NULL
         result = result + ')'
         return result
       
