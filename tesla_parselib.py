@@ -155,7 +155,7 @@ class tesla_record(object):
         return result
 
 
-    def sql_vehicle_update_str(self,current)
+    def sql_vehicle_update_str(self, current) :
 	# construct a string with the columns that need to be updated ready for 
 	# an SQL update command. We assume vin never changes, so we don't check it
         result = ""
