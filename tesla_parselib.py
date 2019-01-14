@@ -104,7 +104,7 @@ class tesla_record(object):
             info = info[key]
         return info
 
-    def sql_vehicle_value(self):
+    def sql_vehicle_insert_str(self):
         result = '({id},\'{vin}\''.format(id=self.vehicle_id, vin=self.vin)
 	if self.display_name:
 	    result = result + ",\'" + self.display_name + "\'"
@@ -155,7 +155,71 @@ class tesla_record(object):
         return result
 
 
-    def sql_vehicle_status_value(self):
+    def sql_vehicle_update_str(self,current)
+	# construct a string with the columns that need to be updated ready for 
+	# an SQL update command. We assume vin never changes, so we don't check it
+        result = ""
+        # check the display_name
+        if current[2] != self.display_name:
+	    result = " display_name = '" + self.display_name + "'"
+	# check car_type
+	if self.car_type is not None :
+	    if current[3] != self.car_type:
+		if( len(result) > 1 ):
+		    result = result + ","
+		result = result + " car_type = '" + self.car_type + "'"
+	# check car_special_type
+	if self.car_special_type is not None :
+	    if current[4] != self.car_special_type:
+		if( len(result) > 1 ):
+		    result = result + ","
+		result = result + " car_special_type = '" + self.car_special_type + "'"
+	# check perf_config
+	if self.perf_config is not None :
+	    if current[5] != self.perf_config:
+		if( len(result) > 1 ):
+		    result = result + ","
+		result = result + " perf_config = '" + self.perf_config + "'"
+	# check has_ludicrous_mode
+	if self.has_ludicrous_mode is not None :
+	    if current[6] != self.has_ludicrous_mode:
+	        if( len(result) > 1 ):
+		    result = result + ","
+		result = result + " has_ludicrous_mode = " + str(self.has_ludicrous_mode)
+	# check wheel_type
+	if self.wheel_type is not None :
+	    if current[7] != self.wheel_type:
+	        if( len(result) > 1 ):
+		    result = result + ","
+		result = result + " wheel_type = '" + self.wheel_type + "'"
+	# check has_air_suspension
+	if self.has_air_suspension is not None :
+	    if current[8] != self.has_air_suspension:
+	        if( len(result) > 1 ):
+		    result = result + ","
+		result = result + " has_air_suspension = " + str(self.has_air_suspension)
+	# check exterior_color
+	if self.exterior_color is not None :
+	    if current[9] != self.exterior_color:
+	        if( len(result) > 1 ):
+		    result = result + ","
+		result = result + " exterior_color = '" + self.exterior_color + "'"
+	# check option_codes
+	if self.option_codes is not None :
+	    if current[10] != self.option_codes:
+	        if( len(result) > 1 ):
+		    result = result + ","
+		result = result + " option_codes = '" + self.option_codes + "'"
+	# check car_version
+	if self.car_version is not None :
+	    if current[11] != self.car_version:
+		if( len(result) > 1 ):
+		    result = result + ","
+		result = result + " car_version = '" + self.car_version + "'"
+	return result
+
+
+    def sql_vehicle_status_insert_str(self):
         result = '({}'.format(self.vehicle_id)
         result = result + ')'
         return result
