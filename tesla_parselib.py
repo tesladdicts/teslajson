@@ -21,6 +21,7 @@ class tesla_record(object):
         self.car_locked = 		self._jget(["vehicle_state", "locked"])
         self.odometer =			self._jget(["vehicle_state", "odometer"])
         self.is_user_present =		self._jget(["vehicle_state", "is_user_present"])
+        self.valet_mode =		self._jget(["vehicle_state", "valet_mode"])
         self.charging_state =		self._jget(["charge_state",  "charging_state"])
         self.usable_battery_level =	self._jget(["charge_state",  "usable_battery_level"])
         self.charge_miles_added =	self._jget(["charge_state",  "charge_miles_added_rated"])
@@ -228,7 +229,7 @@ class tesla_record(object):
         local_timezone = tzlocal.get_localzone()
         local_time = datetime.fromtimestamp(unix_timestamp, local_timezone)
         ts_str = local_time.strftime("%Y-%m-%d %H:%M:%S")
-        result = '(\'{}\',{},\'{}\''.format(ts_str, self.vehicle_id, self.state, )
+        result = '(\'{}\',{},\'{}\''.format(ts_str, self.vehicle_id, self.state)
         if self.car_locked is None :
 	    result = result + ",NULL"
 	else :
@@ -245,26 +246,91 @@ class tesla_record(object):
 	    result = result + ",NULL"
 	else :
 	    result = result + ',\'{}\''.format(self.shift_state)
-#	speed SMALLINT DEFAULT NULL,
-#	latitude DOUBLE PRECISION DEFAULT NULL,
-#	longitude DOUBLE PRECISION DEFAULT NULL,
-#	heading REAL DEFAULT NULL,
-#	gps_as_of TIMESTAMP DEFAULT NULL,
-#	charging_state VARCHAR(255) DEFAULT NULL,
-#	battery_level SMALLINT DEFAULT NULL,
-#	battery_range REAL DEFAULT NULL,
-#	est_battery_range REAL DEFAULT NULL,
-#	charge_rate REAL DEFAULT NULL,
-#	miles_added REAL DEFAULT NULL,
-#	energy_added REAL DEFAULT NULL,
-#	charge_current_request REAL DEFAULT NULL,
-#	charger_power REAL DEFAULT NULL,
-#	charger_voltage REAL DEFAULT NULL,
-#	inside_temp REAL DEFAULT NULL,
-#	outside_temp REAL DEFAULT NULL,
-#	climate_on BOOLEAN NOT NULL,
-#	battery_heater BOOLEAN NOT NULL,
-#	valet_mode BOOLEAN DEFAULT NULL
+        if self.speed is None :
+	    result = result + ",NULL"
+	else :
+	    result = result + ',{}'.format(self.speed)
+        if self.latitude is None :
+	    result = result + ",NULL"
+	else :
+	    result = result + ',{}'.format(self.latitude)
+        if self.longitude is None :
+	    result = result + ",NULL"
+	else :
+	    result = result + ',{}'.format(self.longitude)
+        if self.heading is None :
+	    result = result + ",NULL"
+	else :
+	    result = result + ',{}'.format(self.heading)
+        if self.gps_as_of is None :
+	    result = result + ",NULL"
+	else :
+            # make gps_as_of unixtime into date and time
+            unix_timestamp = float(self.gps_as_of)
+            local_timezone = tzlocal.get_localzone()
+            local_time = datetime.fromtimestamp(unix_timestamp, local_timezone)
+            gps_str = local_time.strftime("%Y-%m-%d %H:%M:%S")
+            result = result + ',\'{}\''.format(gps_str)
+        if self.charging_state is None :
+	    result = result + ",NULL"
+	else :
+	    result = result + ',\'{}\''.format(self.charging_state)
+        if self.usable_battery_level is None :
+	    result = result + ",NULL"
+	else :
+	    result = result + ',{}'.format(self.usable_battery_level)
+        if self.battery_range is None :
+	    result = result + ",NULL"
+	else :
+	    result = result + ',{}'.format(self.battery_range)
+        if self.est_battery_range is None :
+	    result = result + ",NULL"
+	else :
+	    result = result + ',{}'.format(self.est_battery_range)
+        if self.charge_rate is None :
+	    result = result + ",NULL"
+	else :
+	    result = result + ',{}'.format(self.charge_rate)
+        if self.charge_miles_added is None :
+	    result = result + ",NULL"
+	else :
+	    result = result + ',{}'.format(self.charge_miles_added)
+        if self.charge_energy_added is None :
+	    result = result + ",NULL"
+	else :
+	    result = result + ',{}'.format(self.charge_energy_added)
+        if self.charge_current_request is None :
+	    result = result + ",NULL"
+	else :
+	    result = result + ',{}'.format(self.charge_current_request)
+        if self.charger_power is None :
+	    result = result + ",NULL"
+	else :
+	    result = result + ',{}'.format(self.charger_power)
+        if self.charger_voltage is None :
+	    result = result + ",NULL"
+	else :
+	    result = result + ',{}'.format(self.charger_voltage)
+        if self.inside_temp is None :
+	    result = result + ",NULL"
+	else :
+	    result = result + ',{}'.format(self.inside_temp)
+        if self.outside_temp is None :
+	    result = result + ",NULL"
+	else :
+	    result = result + ',{}'.format(self.outside_temp)
+        if self.climate_on is None :
+	    result = result + ",NULL"
+	else :
+	    result = result + ',{}'.format(str(self.climate_on))
+        if self.battery_heater is None :
+	    result = result + ",NULL"
+	else :
+	    result = result + ',{}'.format(str(self.battery_heater))
+        if self.valet_mode is None :
+	    result = result + ",NULL"
+	else :
+	    result = result + ',{}'.format(str(self.valet_mode))
         result = result + ')'
         return result
       
