@@ -18,7 +18,7 @@ CREATE TABLE vehicle_status (
 	ts TIMESTAMP NOT NULL,
 	vehicle_id BIGINT REFERENCES vehicle(vehicle_id),
 	state VARCHAR(16) DEFAULT NULL,
-	car_locked BOOLEAN NOT NULL,
+	car_locked BOOLEAN DEFAULT NULL,
 	odometer REAL DEFAULT NULL,
 	is_user_present BOOLEAN NOT NULL,
 	shift_state CHAR(1) DEFAULT NULL,
@@ -39,8 +39,8 @@ CREATE TABLE vehicle_status (
 	charger_voltage REAL DEFAULT NULL,
 	inside_temp REAL DEFAULT NULL,
 	outside_temp REAL DEFAULT NULL,
-	climate_on BOOLEAN NOT NULL,
-	battery_heater BOOLEAN NOT NULL,
+	climate_on BOOLEAN DEFAULT NULL,
+	battery_heater BOOLEAN DEFAULT NULL,
 	valet_mode BOOLEAN DEFAULT NULL,
 	PRIMARY KEY (ts,vehicle_id)
 );
