@@ -9,6 +9,7 @@ import subprocess
 import tesla_parselib
 import json
 import psycopg2
+from psycopg2.extensions import AsIs
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--verbose', '-v', action='count', help='Increasing levels of verbosity')
@@ -57,6 +58,7 @@ if args.dbconfig:
         cursor.execute("SELECT version();")
         record = cursor.fetchone()
         print 'Connected to {}\n'.format(str(record[0]))
+        cursor.close()
     except (Exception, psycopg2.Error) as error :
         print("Error while connecting to PostgreSQL", error)
         exit()
@@ -160,22 +162,31 @@ for fname in args.files:
             if args.dbconfig:
 	        # check if this vehicle_id is already in the vehicle table
 	        try:
+		    cursor = dbconn.cursor()
 		    query = 'SELECT * FROM vehicle WHERE vehicle_id={};'.format(this.vehicle_id)
 		    cursor.execute(query)
 		except (Exception, psycopg2.Error) as error :
 		    if(dbconn):
-			print("Failed to query vehicle table", error)
+			print error
+			print "Failed to query vehicle table, cannot continue"
+			exit()
 		if cursor.rowcount<1:
 		    # this is the first time we've seen this car, add it
-		    print ("rowcount ",cursor.rowcount)
-		    query = "INSERT INTO vehicle (vehicle_id, vin, display_name, car_type, car_special_type, perf_config, has_ludicrous_mode, wheel_type, has_air_suspension, exterior_color, option_codes, car_version) VALUES"+this.sql_vehicle_insert_str()+";"
-		    #print query
+		    insert_str = "INSERT INTO vehicle (%s) VALUES %s"
+		    insertargs = this.sql_vehicle_insert_dict()
+		    columns = insertargs.keys()
+		    values = [insertargs[column] for column in columns]
+		    #print cursor.mogrify(insert_str, (AsIs(','.join(columns)), tuple(values)))
 		    try:
-		        cursor.execute(query)
-		        dbconn.commit()
+		        cursor.execute(insert_str, (AsIs(','.join(columns)), tuple(values)))
 		    except (Exception, psycopg2.Error) as error :
-		        if(dbconn):
-			    print("Failed to insert record into vehicle table", error)
+			print error
+			print "Failed to insert record into vehicle table, skipping status"
+			dbconn.rollback()
+			cursor.close()
+			continue
+		    else:
+		        dbconn.commit()		      
 	        else:
 		    # we've already got this car, check if anything changed and update
 		    res = cursor.fetchone()
@@ -184,19 +195,44 @@ for fname in args.files:
 	            if (this.car_version is not None) and (res[11] != this.car_version):
 		        print 'This car was updated to version {}'.format(this.car_version)
 		    # check if we need to update anything and get the string for the update
-		    updateargs = this.sql_vehicle_update_str(res)
+		    updateargs = this.sql_vehicle_update_dict(res)
 		    # update the row if needed
 		    if( len(updateargs) > 1 ):
-		        query = 'UPDATE vehicle SET {} WHERE vehicle_id = {};'.format( updateargs, this.vehicle_id)
-		        print query
+		        query_template = "UPDATE vehicle SET ({}) = %s WHERE vehicle_id = {}"
+		        query = query_template.format( ', '.join(updateargs.keys()), this.vehicle_id )
+		        vals = (tuple(updateargs.values()),)
 		        try:
-		            cursor.execute(query)
-		            dbconn.commit()
+		            cursor.execute(query,vals)
 		        except (Exception, psycopg2.Error) as error :
-		            if(dbconn):
-			        print("Failed to insert record into vehicle table", error)
+			    print error
+			    print "Failed to update record in vehicle table"
+			    dbconn.rollback()
+			else:
+		            dbconn.commit()
+		# close cursor and open a new one to clear any possible error
+	        try:
+		    cursor.close()
+		except (Exception, psycopg2.Error) as error :
+		    print error
+		    print "Trouble with the database connection, cannot continue"
+		    exit()
+		cursor = dbconn.cursor()
 		# now add a new vehicle_status row
-		#query = 'INSERT INTO vehicle_status (ts, vehicle_id, state, car_locked, odometer, is_user_present, shift_state, speed, latitude, longitude, heading, gps_as_of, charging_state, battery_level. battery_range, est_battery_range, charge_rate, miles_added, energy_added, charge_current_request. charger_power, charger_voltage, inside_temp, outside_temp, climate_on, battery_heater, valet_mode) VALUES '
+		insert_str = "INSERT INTO vehicle_status (%s) VALUES %s"
+		insertargs = this.sql_vehicle_status_insert_dict()
+		columns = insertargs.keys()
+		values = [insertargs[column] for column in columns]
+		#print cursor.mogrify(insert_str, (AsIs(','.join(columns)), tuple(values)))
+		try:
+		    cursor.execute(insert_str, (AsIs(','.join(columns)), tuple(values)))
+		except (Exception, psycopg2.Error) as error :
+		    print error
+		    print "Failed to insert record into vehicle_status table"
+		    dbconn.rollback()
+		else:
+		    dbconn.commit()
+		# close this cursor, will open a new one in next iteration
+		cursor.close()
 		# as we are inserting data into the database we do nothing else with this record
 		continue
 
