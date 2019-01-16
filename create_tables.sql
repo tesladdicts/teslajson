@@ -20,7 +20,7 @@ CREATE TABLE vehicle_status (
 	state VARCHAR(16) DEFAULT NULL,
 	car_locked BOOLEAN DEFAULT NULL,
 	odometer REAL DEFAULT NULL,
-	is_user_present BOOLEAN NOT NULL,
+	is_user_present BOOLEAN DEFAULT NULL,
 	shift_state CHAR(1) DEFAULT NULL,
 	speed SMALLINT DEFAULT NULL,
 	latitude DOUBLE PRECISION DEFAULT NULL,
