@@ -180,7 +180,8 @@ for fname in args.files:
 		    try:
 		        cursor.execute(insert_str, (AsIs(','.join(columns)), tuple(values)))
 		    except (Exception, psycopg2.Error) as error :
-			print error
+			if args.verbose>0:
+			    print error
 			print "Failed to insert record into vehicle table, skipping status"
 			dbconn.rollback()
 			cursor.close()
@@ -190,9 +191,9 @@ for fname in args.files:
 	        else:
 		    # we've already got this car, check if anything changed and update
 		    res = cursor.fetchone()
-		    if res[2] != this.display_name:
+		    if (res[2] != this.display_name) and (args.verbose>0):
 		        print 'This car\'s name has changed from \'{}\' to \'{}\'!'.format(res[2], this.display_name)
-	            if (this.car_version is not None) and (res[11] != this.car_version):
+	            if (this.car_version is not None) and (res[11] != this.car_version) and (args.verbose>0):
 		        print 'This car was updated to version {}'.format(this.car_version)
 		    # check if we need to update anything and get the string for the update
 		    updateargs = this.sql_vehicle_update_dict(res)
@@ -204,7 +205,8 @@ for fname in args.files:
 		        try:
 		            cursor.execute(query,vals)
 		        except (Exception, psycopg2.Error) as error :
-			    print error
+			    if args.verbose>0:
+			        print error
 			    print "Failed to update record in vehicle table"
 			    dbconn.rollback()
 			else:
@@ -226,7 +228,8 @@ for fname in args.files:
 		try:
 		    cursor.execute(insert_str, (AsIs(','.join(columns)), tuple(values)))
 		except (Exception, psycopg2.Error) as error :
-		    print error
+		    if args.verbose>0:
+			print error
 		    print "Failed to insert record into vehicle_status table"
 		    dbconn.rollback()
 		else:
