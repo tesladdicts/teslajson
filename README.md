@@ -204,7 +204,7 @@ summary statistics this will instead insert the data into
 the database. Make sure to indicate the file(s) with the data desired.
 For example: 
 
-`tesla-parser.py --dbconfig dbconfig /var/logs/tesla/20*.json`
+`tesla-parser.py -n 0 --dbconfig dbconfig /var/logs/tesla/20*.json`
 
 If the data had already been inserted into the database in a previous
 run, the program will issue appropriate warnings.
