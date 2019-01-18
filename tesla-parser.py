@@ -219,18 +219,29 @@ for fname in args.files:
 		    print "Trouble with the database connection, cannot continue"
 		    exit()
 		cursor = dbconn.cursor()
-		# now add a new vehicle_status row
-		insert_str = "INSERT INTO vehicle_status (%s) VALUES %s"
+		# add a new vehicle_status row
+		# if the user wants verbosity we will expose duplicate key errors
+		# if no verbosity is requested we silently skip inserts with duplicate key
+		if args.verbose>0 :
+		   insert_str = "INSERT INTO vehicle_status (%s) VALUES %s"
+		else:
+		   insert_str = "INSERT INTO vehicle_status (%s) VALUES %s ON CONFLICT DO NOTHING"
 		insertargs = this.sql_vehicle_status_insert_dict()
 		columns = insertargs.keys()
 		values = [insertargs[column] for column in columns]
-		#print cursor.mogrify(insert_str, (AsIs(','.join(columns)), tuple(values)))
 		try:
 		    cursor.execute(insert_str, (AsIs(','.join(columns)), tuple(values)))
 		except (Exception, psycopg2.Error) as error :
 		    if args.verbose>0:
-			print error
-		    print "Failed to insert record into vehicle_status table"
+		        if error.diag.sqlstate == '23505' :
+		            print "Did not insert record into vehicle_status: duplicate timestamp"
+		            if args.verbose>1:
+			       print 'vehicle: {} timestamp: {}'.format(insertargs['vehicle_id'],insertargs['ts'])
+			    print
+		        else:
+			    print error.diag.sqlstate
+		            print "Error: failed to insert record into vehicle_status"
+			    print error
 		    dbconn.rollback()
 		else:
 		    dbconn.commit()
