@@ -17,7 +17,7 @@ parser.add_argument('--nosummary', action='store_true', help='Do not print summa
 parser.add_argument('--follow', '-f', type=str, help='Follow this specific file')
 parser.add_argument('--numlines', '-n', type=str, help='Handle these number of lines')
 parser.add_argument('--outdir', default=None, help='Convert input files into daily output files')
-parser.add_argument('--dbconfig', '-d', type=str, help='Insert records in database using this config file')
+parser.add_argument('--dbconfig', type=str, help='Insert records in database using this config file')
 parser.add_argument('files', nargs='*')
 args = parser.parse_args()
 
