@@ -1,12 +1,15 @@
 #!/usr/bin/python
 #
-# Print the data stored by telsa_poller
+# Print the data stored by tesla_poller
 #
 
 import argparse
 import datetime
 import subprocess
 import tesla_parselib
+import json
+import psycopg2
+from psycopg2.extensions import AsIs
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--verbose', '-v', action='count', help='Increasing levels of verbosity')
@@ -14,6 +17,7 @@ parser.add_argument('--nosummary', action='store_true', help='Do not print summa
 parser.add_argument('--follow', '-f', type=str, help='Follow this specific file')
 parser.add_argument('--numlines', '-n', type=str, help='Handle these number of lines')
 parser.add_argument('--outdir', default=None, help='Convert input files into daily output files')
+parser.add_argument('--dbconfig', type=str, help='Insert records in database using this config file')
 parser.add_argument('files', nargs='*')
 args = parser.parse_args()
 
@@ -22,6 +26,48 @@ if not args.numlines:
 
 if args.follow:
     args.files.append(None)
+
+if args.dbconfig:
+    # we are going to write data to the database
+    # read the config file and get database settings
+    dbfile = open(args.dbconfig, "r")
+    if dbfile:
+        dbinfo = json.loads(dbfile.read())
+        dbfile.close()
+        if 'host' in dbinfo:
+            host = dbinfo['host']
+        else:
+            host = "localhost"
+        if 'port' in dbinfo:
+            port = dbinfo['port']
+        else:
+            port = "5432"
+        if 'user' in dbinfo:
+            user = dbinfo['user']
+        else:
+            user = "teslauser"
+        if 'password' in dbinfo:
+            password = dbinfo['password']
+        else:
+            password = ""
+    # open the database
+    try:
+        conn_string = "host="+ host + " port=" + port + " dbname=tesladata  user=" + user +" password=" + password
+        dbconn = psycopg2.connect(conn_string)
+        cursor = dbconn.cursor()
+        cursor.execute("SELECT version();")
+        record = cursor.fetchone()
+        print 'Connected to {}\n'.format(str(record[0]))
+        cursor.close()
+    except (Exception, psycopg2.Error) as error :
+        print("Error while connecting to PostgreSQL", error)
+        exit()
+#    if(dbconn):
+#        cursor.close()
+#        dbconn.close()
+#        print("PostgreSQL connection closed\n")
+
+
 
 class openfile(object):
     """Open a file"""
@@ -94,19 +140,117 @@ save = None
 lastthis = None
 reallasttime = None
 
+# loop over all files
 for fname in args.files:
     with openfile(fname, args) as R:
         linenum=0
+        # loop over all json records (one per line)
         while True:
+	    # read a line
             line = R.readline()
             linenum += 1
             if not line:
                 break
+	    # parse the json into 'this' object
             this = tesla_parselib.tesla_record(line, want_offline=args.verbose>2)
 
+            # if no valid object move on to the next
             if not this:
                 continue
 
+            # if we are using the database fill it up!
+            if args.dbconfig:
+	        # check if this vehicle_id is already in the vehicle table
+	        try:
+		    cursor = dbconn.cursor()
+		    query = 'SELECT * FROM vehicle WHERE vehicle_id={};'.format(this.vehicle_id)
+		    cursor.execute(query)
+		except (Exception, psycopg2.Error) as error :
+		    if(dbconn):
+			print error
+			print "Failed to query vehicle table, cannot continue"
+			exit()
+		if cursor.rowcount<1:
+		    # this is the first time we've seen this car, add it
+		    insert_str = "INSERT INTO vehicle (%s) VALUES %s"
+		    insertargs = this.sql_vehicle_insert_dict()
+		    columns = insertargs.keys()
+		    values = [insertargs[column] for column in columns]
+		    #print cursor.mogrify(insert_str, (AsIs(','.join(columns)), tuple(values)))
+		    try:
+		        cursor.execute(insert_str, (AsIs(','.join(columns)), tuple(values)))
+		    except (Exception, psycopg2.Error) as error :
+			if args.verbose>0:
+			    print error
+			print "Failed to insert record into vehicle table, skipping status"
+			dbconn.rollback()
+			cursor.close()
+			continue
+		    else:
+		        dbconn.commit()		      
+	        else:
+		    # we've already got this car, check if anything changed and update
+		    res = cursor.fetchone()
+		    if (res[2] != this.display_name) and (args.verbose>0):
+		        print 'This car\'s name has changed from \'{}\' to \'{}\'!'.format(res[2], this.display_name)
+	            if (this.car_version is not None) and (res[11] != this.car_version) and (args.verbose>0):
+		        print 'This car was updated to version {}'.format(this.car_version)
+		    # check if we need to update anything and get the string for the update
+		    updateargs = this.sql_vehicle_update_dict(res)
+		    # update the row if needed
+		    if( len(updateargs) > 1 ):
+		        query_template = "UPDATE vehicle SET ({}) = %s WHERE vehicle_id = {}"
+		        query = query_template.format( ', '.join(updateargs.keys()), this.vehicle_id )
+		        vals = (tuple(updateargs.values()),)
+		        try:
+		            cursor.execute(query,vals)
+		        except (Exception, psycopg2.Error) as error :
+			    if args.verbose>0:
+			        print error
+			    print "Failed to update record in vehicle table"
+			    dbconn.rollback()
+			else:
+		            dbconn.commit()
+		# close cursor and open a new one to clear any possible error
+	        try:
+		    cursor.close()
+		except (Exception, psycopg2.Error) as error :
+		    print error
+		    print "Trouble with the database connection, cannot continue"
+		    exit()
+		cursor = dbconn.cursor()
+		# add a new vehicle_status row
+		# if the user wants verbosity we will expose duplicate key errors
+		# if no verbosity is requested we silently skip inserts with duplicate key
+		if args.verbose>0 :
+		   insert_str = "INSERT INTO vehicle_status (%s) VALUES %s"
+		else:
+		   insert_str = "INSERT INTO vehicle_status (%s) VALUES %s ON CONFLICT DO NOTHING"
+		insertargs = this.sql_vehicle_status_insert_dict()
+		columns = insertargs.keys()
+		values = [insertargs[column] for column in columns]
+		try:
+		    cursor.execute(insert_str, (AsIs(','.join(columns)), tuple(values)))
+		except (Exception, psycopg2.Error) as error :
+		    if args.verbose>0:
+		        if error.diag.sqlstate == '23505' :
+		            print "Did not insert record into vehicle_status: duplicate timestamp"
+		            if args.verbose>1:
+			       print 'vehicle: {} timestamp: {}'.format(insertargs['vehicle_id'],insertargs['ts'])
+			    print
+		        else:
+			    print error.diag.sqlstate
+		            print "Error: failed to insert record into vehicle_status"
+			    print error
+		    dbconn.rollback()
+		else:
+		    dbconn.commit()
+		# close this cursor, will open a new one in next iteration
+		cursor.close()
+		# as we are inserting data into the database we do nothing else with this record
+		continue
+
+            # output data to file in outdir
             if args.outdir:
                 output_maintenance(this.time)
                 X.write(line)
@@ -123,6 +267,7 @@ for fname in args.files:
                 save = this
                 prev = this
 
+            # analyze data and provide a summary
             while firstthismode and not args.nosummary:
                 if firstthismode.mode != this.mode:
 
@@ -212,3 +357,4 @@ for fname in args.files:
 
             if args.verbose:
                 outputit(this)
+

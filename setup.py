@@ -19,9 +19,9 @@ def get_version():
 setup(name='teslajson',
       version=get_version(),
       description='Manipulate tesla API, send commands, poll data',
-      url='https://github.com/gglockner/teslajson',
+      url='https://github.com/SethRobertson/teslajson',
       py_modules=['teslajson','tesla_parselib'],
       scripts=['tesla_poller','tesla-parser.py','poller_rpc.py'],
-      author='Greg Glockner, Seth Robertson',
+      author='Greg Glockner, Seth Robertson, Pedro Mendes',
       license='MIT',
       )
