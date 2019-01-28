@@ -62,7 +62,7 @@ vehicles associated with your account on teslamotors.com.
 
 `Vehicle`: The vehicle class is a subclass of a Python dictionary
 (_dict_).  A _Vehicle_ object contains fields that identify your
-vehicle, such as the Vehicle Identification Number (_Vehicle['vin']_). 
+vehicle, such as the Vehicle Identification Number (_Vehicle['vin']_).
 All standard dictionary methods are supported.
 
 `Vehicle.wake_up()`: Wake the vehicle.
@@ -189,20 +189,25 @@ fully charged battery size of 78kW and a 312 maximum rated mile range.
 
 ## Storing the data in a relational database
 
-`tesla-parser.py` is able to insert the stored data into a relational 
-database which may be more convenient for analysis. In order to do this 
-an adequate Postgresql database needs to be installed and accessible. 
-Create a database named "tesladata" and set a user (eg. "teslauser") 
-with privileges to create tables. Then run the file `create_tables` 
-with this user. Set the connection details in the file `dbconfig`, 
-including the password for the user (it is advisible to have that file 
-protected from other users so as not to reveal the password). 
+`tesla-parser.py` is able to insert the stored data into a relational
+database which may be more convenient for analysis. In order to do this
+an adequate Postgresql database needs to be installed and accessible.
+Create a database named "tesladata" and set a user (eg. "teslauser")
+with privileges to create tables. Then run the file `create_tables`
+with this user. Set the connection details in the file `dbconfig`,
+including the password for the user (it is advisible to have that file
+protected from other users so as not to reveal the password).
 
-To store the data into the database run `tesla-parser.py` with the 
+`create user teslauser with encrypted password 'example'`;
+`create database tesladata;`
+`grant all privileges on database tesladata to teslauser;`
+`psql -U testauser testladata < create_tables.sql`
+
+To store the data into the database run `tesla-parser.py` with the
 command line option `--dbconfig dbconfig`. Instead of dumping
-summary statistics this will instead insert the data into 
+summary statistics this will instead insert the data into
 the database. Make sure to indicate the file(s) with the data desired.
-For example: 
+For example:
 
 `tesla-parser.py -n 0 --dbconfig dbconfig /var/logs/tesla/20*.json`
 

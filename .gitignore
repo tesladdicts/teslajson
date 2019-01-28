@@ -7,3 +7,4 @@ build/
 teslajson.egg-info/
 dist/
 MANIFEST
+dbconfig.local
