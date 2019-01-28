@@ -15,7 +15,6 @@ def get_version():
             return mo.group(1)
     raise RuntimeError('Unable to find version string in %s.' % (VERSIONFILE,))
 
-
 setup(name='teslajson',
       version=get_version(),
       description='Manipulate tesla API, send commands, poll data',
@@ -24,4 +23,5 @@ setup(name='teslajson',
       scripts=['tesla_poller','tesla-parser.py','poller_rpc.py'],
       author='Greg Glockner, Seth Robertson, Pedro Mendes',
       license='MIT',
+      install_requires=['pytz','psycopg2-binary','Request']
       )
