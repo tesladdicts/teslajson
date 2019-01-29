@@ -65,9 +65,9 @@ class tesla_record(object):
                 else:
                     setattr(self, k, None)
 
-        if self.charger_power and self.charger_power > 0:
+        if self.charger_power is not None and self.charger_power > 0:
             self.mode = "Charging"
-        elif self.shift_state and self.shift_state != "P":
+        elif self.shift_state is not None and self.shift_state != "P":
             self.mode = "Driving"
         elif self.climate_on:
             self.mode = "Conditioning"
