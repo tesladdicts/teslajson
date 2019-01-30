@@ -1,7 +1,3 @@
-# MOVED
-
-Moved to https://github.com/tesladdicts/teslajson
-
 # teslajson
 Simple Python class to access the Tesla JSON API.
 
