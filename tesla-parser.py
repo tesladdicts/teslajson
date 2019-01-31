@@ -308,7 +308,7 @@ for fname in args.files:
                     # check if we need to update anything and get the string for the update
                     updateargs = this.sql_vehicle_update_dict(res)
                     # update the row if needed
-                    if len(updateargs) > 1:
+                    if len(updateargs) > 0:
                         query = "UPDATE vehicle SET (%s) = %s WHERE vehicle_id = %s"
                         vals = (AsIs(','.join(updateargs.keys())), tuple(updateargs.values()), this.vehicle_id)
                         try:
