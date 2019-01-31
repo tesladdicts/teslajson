@@ -1,5 +1,6 @@
 {
  "host":"localhost",
  "user":"teslauser",
+ "database":"tesladata",
  "password":"mypassword"
 }
