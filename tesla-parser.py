@@ -278,7 +278,7 @@ for fname in args.files:
                 # check if this vehicle_id is already in the vehicle table
                 try:
                     cursor = dbconn.cursor(cursor_factory = psycopg2.extras.DictCursor)
-                    query = 'SELECT * FROM vehicle WHERE vehicle_id=%s;'
+                    query = 'SELECT * FROM vehicle WHERE vehicle_id=%s'
                     cursor.execute(query, (this.vehicle_id,))
                 except (Exception, psycopg2.Error) as error :
                     if(dbconn):
@@ -314,10 +314,10 @@ for fname in args.files:
                         try:
                             cursor.execute(query, vals)
                         except (Exception, psycopg2.Error) as error :
+                            dbconn.rollback()
                             if args.verbose>0:
                                 print(error)
                             print("Failed to update record in vehicle table")
-                            dbconn.rollback()
                         else:
                             dbconn.commit()
                 # close cursor and open a new one to clear any possible error
@@ -338,9 +338,7 @@ for fname in args.files:
                 try:
                     cursor.execute(insert_str, (AsIs(','.join(columns)), tuple(values)))
                 except psycopg2.Error as error :
-                    if args.verbose>0:
-                        if error.diag.sqlstate == '23505' :
-
+                        if error.diag.sqlstate == '23505':
                             dbconn.rollback()
                             if len(insertargs.keys()) > 3:
                                 update_str = "UPDATE vehicle_status SET (%s) = %s WHERE vehicle_id = %s AND timets = %s"
@@ -357,7 +355,8 @@ for fname in args.files:
 #                                if args.verbose>1:
 #                                    print('vehicle: {} timestamp: {}'.format(insertargs['vehicle_id'],insertargs['timets']))
                         else:
-                            print(error.diag.sqlstate)
+			    if args.verbose>0:
+                                print(error.diag.sqlstate)
                             print("Error: failed to insert record into vehicle_status: %s"%str(error))
                             dbconn.rollback()
                 except Exception as error :
