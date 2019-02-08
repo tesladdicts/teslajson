@@ -146,8 +146,9 @@ class tesla_record(object):
         result = {}
 
         for memid in ("display_name", "car_type", "car_special_type", "perf_config", "has_ludicrous_mode", "wheel_type", "has_air_suspension", "exterior_color", "option_codes", "car_version"):
-            if current.get(memid,None) != getattr(self, memid):
-                result[memid] = getattr(self, memid)
+            if getattr(self, memid) is not None:
+                if current.get(memid, None) != getattr(self, memid):
+                    result[memid] = getattr(self, memid)
         return result
 
 
