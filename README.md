@@ -1,9 +1,9 @@
-# teslajson
-Simple Python class to access the Tesla JSON API.
+# testatus
+Python suite to: 1) Access Tesla vehicle status via APIs, 2) Poll and log Tesla vehicle status via API, 3) Parse vehicle logs, and 4) Perform some limited indirect RPCs to change Tesla vehicle status
 
-Written by Greg Glockner
+Tesla vehicle status API written by Greg Glockner, poller/rpc written by Seth Robertson
 
-## Description
+## API Description
 This is a simple Python interface to the [Tesla JSON
 API](https://tesla-api.timdorr.com/). With this, you can query your
 vehicle, control charge settings, turn on the air conditioning, and
@@ -20,13 +20,12 @@ to the underlying JSON API.
 This has been tested with Python 2.7 and Python 3.5.  It has no dependencies
 beyond the standard Python libraries.
 
-## Installation
+### Installation
 0. Download the repository zip file and uncompress it
 0. Run the following command with your Python interpreter: `python setup.py install`
 
-Alternately, add the teslajson.py code to your program.
 
-## Public API
+### Public API
 `Connection(email, password, **kwargs)`:
 Initialize the connection to the Tesla Motors website.
 
@@ -79,7 +78,7 @@ as _charge\_port\_door\_open_, _charge\_max\_range_. Returns a
 dictionary (_dict_).  For a full list of  _name_ values, see the _POST_ commands
 in the [Tesla JSON API](http://docs.timdorr.apiary.io/).
 
-## Example
+### Example
 	import teslajson
 	c = teslajson.Connection('youremail', 'yourpassword')
 	v = c.vehicles[0]
@@ -87,11 +86,11 @@ in the [Tesla JSON API](http://docs.timdorr.apiary.io/).
 	v.data_request('charge_state')
 	v.command('charge_start')
 
-## Partial example:
+### Partial example:
 
 	c = teslajson.Connection(access_token='b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c', tesla_client='{"v1": {"id": "e4a9949fcfa04068f59abb5a658f2bac0a3428e4652315490b659d5ab3f35a9e", "secret": "c75f14bbadc8bee3a7594412c31416f8300256d7668ea7e6e7f06727bfb9d220", "baseurl": "https://owner-api.teslamotors.com", "api": "/api/1/"}}')
 
-## Another example
+### Another example
 
 	./teslajson.py --email my@email.com --password thepass --tokens_file /tmp/tesla.creds get
 	./teslajson.py --tokens_file /tmp/tesla.creds --vid 0 get
@@ -103,11 +102,11 @@ in the [Tesla JSON API](http://docs.timdorr.apiary.io/).
 	./teslajson.py --tokens_file /tmp/tesla.creds do charge_port_door_open
 
 
-## Credits
+### Credits
 Many thanks to [Tim Dorr](http://timdorr.com) for documenting the Tesla JSON API.
 This would not be possible without his work.
 
-## Disclaimer
+### Disclaimer
 This software is provided as-is.  This software is not supported by or
 endorsed by Tesla Motors.  Tesla Motors does not publicly support the
 underlying JSON API, so this software may stop working at any time.  The
@@ -115,11 +114,11 @@ author makes no guarantee to release an updated version to fix any
 incompatibilities.
 
 
-# tesla_poller
+## tesla_poller
 
 Written by Seth Robertson
 
-## Description
+### Description
 
 Use the teslajson library to do smart polling of your Tesla(s) and log
 the resulting JSON information to a directory for
@@ -146,7 +145,7 @@ symlink cur.json to the most recent file.
 You may override the intervals of important (polling frequency mostly)
 by using `--intervals inactive=61` or similar.
 
-## Reading the stored data
+#$# Reading the stored data
 
 `tesla-parser.py` was created to read the stored data.
 
@@ -187,7 +186,7 @@ charged for 2.5 hours, to 88%, getting 19kW or 79 rated miles.  The
 charge was obtained at an average speed of 31mph, and implied a
 fully charged battery size of 78kW and a 312 maximum rated mile range.
 
-## Storing the data in a relational database
+### Storing the data in a relational database
 
 `tesla-parser.py` is able to insert the stored data into a relational
 database which may be more convenient for analysis. In order to do this
@@ -214,7 +213,7 @@ For example:
 If the data had already been inserted into the database in a previous
 run, the program will issue appropriate warnings.
 
-## Using the remote control
+### Using the remote control
 
 The `poller_rpc.py` program implements a client side of the RPC.  It
 is pretty primitive.  Specify the remote address of the server with
@@ -228,6 +227,6 @@ you use --variables to specify commands.  Example:
         # Set battery charge limit to 77%, do NOT do cabin preconditioning
         ./poller_rpc.py --cmd_address 127.0.0.1:60001 --variables cmd=autocondition --variables level=77 --variables temp=
 
-## Bugs
+### Bugs
 
 Only tested with one vehicle.
