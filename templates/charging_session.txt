@@ -1,0 +1,13 @@
+{% block content %}
+{{name}}'s full charging sessions in the last {{days}} days
+ ({{datefrom}} to {{dateto}})
+
+{% for item in plist -%}
+{{item['no']}} - {{item['sdate']}} {{item['stime']}}, Duration: {{item['th']}}h {{item['tm']}}min
+     Location: {{item['lat']}},{{item['long']}}
+     Avg temperatures: inside {{item['tin']}} C, outside {{item['tout']}} C
+     Battery: {{item['tkwh']}} KWh added ({{item['spct']}}% to {{item['epct']}}%). {{item['tmiles']}} miles range added
+     Rate: {{item['tkw']}} KW, {{item['mph']}} miles/h.
+     
+{% endfor %}Total {{kwh_total}} KWh charged ({{miles_total}} miles) in {{tspanh}}h {{tspanm}}m ({{mph}} miles/h)
+{% endblock %}
