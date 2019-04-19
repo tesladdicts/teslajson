@@ -13,6 +13,7 @@ import json
 import psycopg2
 from psycopg2.extensions import AsIs
 from jinja2 import Environment, FileSystemLoader
+from xhtml2pdf import pisa
 
 parser = argparse.ArgumentParser(description="Print charging statistics for last n days")
 parser.add_argument('--verbose', '-v', action='count', help='Increasing levels of verbosity')
@@ -159,15 +160,35 @@ if args.dbconfig:
 	    print report
 	else :
 	    fbase = '{} charging {} - {}'.format(display_name,qtime.strftime("%Y-%m-%d %H:%M"),now.strftime("%Y-%m-%d %H:%M"))
-	    htmltemplate = j2env.get_template('charging_session.xhtml')
+	    if args.format == 'pdf' : 
+	        templatename = 'charging_session_pdf.xhtml'
+	    else: 
+	        templatename = 'charging_session.xhtml'
+	    htmltemplate = j2env.get_template(templatename)
             report = htmltemplate.render(
-	      title='{} charging sessions in the last {} days'.format(display_name, args.days), description='Summary of Tesla vehicle charging sessions',name=display_name, datefrom=qtime.strftime("%Y/%m/%d %H:%M:%S"), dateto=now.strftime("%Y/%m/%d %H:%M:%S"), days=args.days, kwh_total=rep_kwh_total, miles_total=rep_miles_total, tspanh=tspanh, tspanm=tspanm, mph=rep_mph, plist=plist)
+	      title='{} charging sessions in the last {} days'.format(display_name, args.days),
+	      description='Summary of Tesla vehicle charging sessions',
+	      name=display_name, datefrom=qtime.strftime("%Y/%m/%d %H:%M:%S"),
+	      dateto=now.strftime("%Y/%m/%d %H:%M:%S"), 
+	      days=args.days, 
+	      kwh_total=rep_kwh_total, 
+	      miles_total=rep_miles_total, 
+	      tspanh=tspanh, 
+	      tspanm=tspanm, 
+	      mph=rep_mph, 
+	      plist=plist)
 	    if args.format == 'html' :
 	        fname = '{}.html'.format(fbase)
-#	    if args.format == 'pdf'
-            ofile = open(fname, 'w')
-            ofile.write(report)
-            ofile.close()
+	        ofile = open(fname, 'w')
+	        ofile.write(report)
+	        ofile.close()
+	    if args.format == 'pdf' :
+	        fname = '{}.pdf'.format(fbase)
+	        ofile = open(fname, "w+b")
+	        # convert HTML to PDF
+	        pisaStatus = pisa.CreatePDF(report,dest=ofile)
+	        ofile.close()
+	        # TODO: with pisaStatus.err here
 
 
     if(dbconn):
