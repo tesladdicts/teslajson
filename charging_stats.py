@@ -81,6 +81,8 @@ if args.dbconfig:
     
     # make a query to get the first row of charging and the last after charging
     query='SELECT * FROM ( SELECT timets, LAG(timets) OVER (ORDER BY timets ASC) as tb, charge_miles_added, charge_energy_added, battery_range, est_battery_range, usable_battery_level, latitude, longitude, odometer, charging_state,  LAG(charging_state) OVER (ORDER BY timets ASC) as prev FROM vehicle_status WHERE vehicle_id=%s AND timets > %s AND charging_state IS NOT NULL ) x WHERE (prev <> \'Charging\' AND charging_state = \'Charging\') OR (prev = \'Charging\' AND charging_state <> \'Charging\')'
+    if args.verbose>2:
+        print cursor.mogrify(query,(vehicle_id,qtime))
     cursor.execute(query,(vehicle_id,qtime))
     nrows = cursor.rowcount
     if nrows < 1:
@@ -110,8 +112,10 @@ if args.dbconfig:
             tspanm = int((tspan%3600) // 60)
             toprint = {}
             n = n + 1
-            kwh_total = kwh_total + res[i+1][3]
-            miles_total = miles_total + res[i+1][2]
+            tm = res[i+1][2]-res[i][2]
+            miles_total = miles_total + tm
+            tk = res[i+1][3]-res[i][3]
+            kwh_total = kwh_total + tk
             # let's get the full time series for this session
             query2='SELECT timets, usable_battery_level, inside_temp, outside_temp FROM vehicle_status WHERE vehicle_id = %s AND timets >= %s AND timets <= %s'
             # let's get the temperature time series for this session
@@ -131,12 +135,12 @@ if args.dbconfig:
             toprint['tout'] = "%.1f"%(chtavg[0][1])
             toprint['smiles'] = str(res[i][4])
             toprint['emiles'] = str(res[i+1][4])
-            toprint['tmiles'] = str(res[i+1][2])
-            toprint['mph'] = "%.1f"%(res[i+1][2]/(tspan/3600))
+            toprint['tmiles'] = str(tm)
+            toprint['mph'] = "%.1f"%(tm/(tspan/3600))
             toprint['spct'] = str(res[i][6])
             toprint['epct'] = str(res[i+1][6])
-            toprint['tkwh'] =  str(res[i+1][3])
-            toprint['tkw'] = "%.1f"%(res[i+1][3]/(tspan/3600))
+            toprint['tkwh'] =  str(tk)
+            toprint['tkw'] = "%.1f"%(tk/(tspan/3600))
             # add this item to the print list
             plist.append(toprint)
             # find out what is at this location
