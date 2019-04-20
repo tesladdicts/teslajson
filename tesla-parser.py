@@ -11,6 +11,8 @@ import json
 import psycopg2
 import psycopg2.extras
 import sys
+from datetime import datetime
+import pytz
 
 # Update if you cannot find this
 from psycopg2.extensions import AsIs
@@ -302,6 +304,19 @@ for fname in args.files:
                         continue
                     else:
                         dbconn.commit()
+                    # add also the firmware 
+                    fwargs = {}
+                    insert_str = "INSERT INTO firmware (%s) VALUES %s"
+                    fwargs["vehicle_id"] = this.vehicle_id
+                    fwargs["car_version"] = this.car_version
+                    fwargs['timets'] = datetime.fromtimestamp(float(this.timets),pytz.timezone("UTC")).isoformat()
+                    columns = fwargs.keys()
+                    values = fwargs.values()
+                    try:
+                        cursor.execute(insert_str, (AsIs(','.join(columns)), tuple(values)))
+                    except psycopg2.Error as error :
+                        if error.diag.sqlstate == '23505':
+                            dbconn.rollback()
                 else:
                     # we've already got this car, check if anything changed and update
                     res = cursor.fetchone()
@@ -323,6 +338,21 @@ for fname in args.files:
                             print("Failed to update record in vehicle table")
                         else:
                             dbconn.commit()
+                        # check for version updates
+                        if updateargs['car_version'] is not None:
+                            # log the version change
+                            fwargs = {}
+                            insert_str = "INSERT INTO firmware (%s) VALUES %s"
+                            fwargs['vehicle_id'] = this.vehicle_id
+                            fwargs['car_version'] = this.car_version
+                            fwargs['timets'] = datetime.fromtimestamp(float(this.timets),pytz.timezone("UTC")).isoformat()
+                            columns = fwargs.keys()
+                            values = fwargs.values()
+                            try:
+                                cursor.execute(insert_str, (AsIs(','.join(columns)), tuple(values)))
+                            except psycopg2.Error as error :
+                                if error.diag.sqlstate == '23505':
+                                    dbconn.rollback()
                 # close cursor and open a new one to clear any possible error
                 try:
                     cursor.close()
