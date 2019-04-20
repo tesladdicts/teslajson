@@ -14,6 +14,25 @@ CREATE TABLE vehicle (
 	PRIMARY KEY (vehicle_id)
 );
 
+CREATE TABLE firmware (
+	vehicle_id BIGINT REFERENCES vehicle(vehicle_id),
+	car_version VARCHAR(64) DEFAULT NULL,
+	timets TIMESTAMP WITH TIME ZONE NOT NULL,
+	PRIMARY KEY (vehicle_id, car_version)
+);
+
+CREATE TABLE location (
+	location_id BIGINT NOT NULL,
+	latitude DOUBLE PRECISION DEFAULT NULL,
+	longitude DOUBLE PRECISION DEFAULT NULL,
+	name VARCHAR(255) DEFAULT NULL,
+	tesla_supercharger BOOLEAN DEFAULT NULL,
+	charge_station BOOLEAN DEFAULT NULL,
+	home BOOLEAN DEFAULT NULL,
+	work BOOLEAN DEFAULT NULL,
+	PRIMARY KEY (location_id)
+);
+
 CREATE TABLE vehicle_status (
 	timets TIMESTAMP WITH TIME ZONE NOT NULL,
 	vehicle_id BIGINT REFERENCES vehicle(vehicle_id),
@@ -42,5 +61,6 @@ CREATE TABLE vehicle_status (
 	climate_on BOOLEAN DEFAULT NULL,
 	battery_heater BOOLEAN DEFAULT NULL,
 	valet_mode BOOLEAN DEFAULT NULL,
+	location_id BIGINT DEFAULT NULL REFERENCES location(location_id),
 	PRIMARY KEY (timets,vehicle_id)
 );
