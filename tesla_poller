@@ -17,7 +17,19 @@ master_connection = None
 master_lock = Lock()
 
 # Time intervals of importance to program operation
-intervals = { "inactive": 60, "to_sleep": 150, "charging": 90, "running": 30, "recent": 60, "prep": 60, "Unknown": 15, "any_poll": 10000, "running_poll": 300, "charging_poll": 900, "recent_interval": 500 }
+intervals = { 
+  "inactive": 60,        # when inactive/sleeping (next check will not retrieve data)
+  "to_sleep": 150,       # car is trying to sleep (give it time to enter sleep mode)
+  "charging": 90,        # car is charging
+  "running": 30,         # car is running
+  "recent": 60,          # car did something interesting recently (command, drive, charge)
+  "prep": 60,            # car is parked with heating on, conditioning battery
+  "Unknown": 15,         # was previously asleep, check what it is doing now
+  "any_poll": 10000,     # interval to force full data poll (wakes the car up!)
+  "running_poll": 300,   # interval to force full data poll (while driving)
+  "charging_poll": 900,  # interval to force full data poll (while charging)
+  "recent_interval": 500 # interval to keep state "recent" after something interesting
+  }
 
 
 
@@ -279,7 +291,7 @@ def monitor_vehicle(vehicle, args, queue):
     wake(vehicle)
     basedata = data_request(vehicle, None)
 
-    # Loop to handle exceptions, with bounded expoential backoff to prevent Tesla from getting overly mad if we are polling too often
+    # Loop to handle exceptions, with bounded exponential backoff to prevent Tesla from getting overly mad if we are polling too often
     while True:
         try:
             # Loop monitoring vehicle state
