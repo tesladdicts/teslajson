@@ -11,7 +11,6 @@ import json
 import psycopg2
 import psycopg2.extras
 import sys
-from datetime import datetime
 import pytz
 
 # Update if you cannot find this
