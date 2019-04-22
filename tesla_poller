@@ -17,9 +17,9 @@ master_connection = None
 master_lock = Lock()
 
 # Time intervals of importance to program operation
-intervals = { 
+intervals = {
   "inactive": 60,        # when inactive/sleeping (next check will not retrieve data)
-  "to_sleep": 150,       # car is trying to sleep (give it time to enter sleep mode)
+  "to_sleep": 900,       # car is trying to sleep (give it time to enter sleep mode)
   "charging": 90,        # car is charging
   "running": 30,         # car is running
   "recent": 60,          # car did something interesting recently (command, drive, charge)
