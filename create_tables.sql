@@ -22,15 +22,14 @@ CREATE TABLE firmware (
 );
 
 CREATE TABLE location (
-	location_id BIGINT NOT NULL,
-	latitude DOUBLE PRECISION DEFAULT NULL,
-	longitude DOUBLE PRECISION DEFAULT NULL,
+	location_id BIGSERIAL PRIMARY KEY,
+	latitude DOUBLE PRECISION NOT NULL,
+	longitude DOUBLE PRECISION NOT NULL,
 	name VARCHAR(255) DEFAULT NULL,
-	tesla_supercharger BOOLEAN DEFAULT NULL,
-	charge_station BOOLEAN DEFAULT NULL,
-	home BOOLEAN DEFAULT NULL,
-	work BOOLEAN DEFAULT NULL,
-	PRIMARY KEY (location_id)
+	is_tesla_supercharger BOOLEAN DEFAULT NULL,
+	is_charge_station BOOLEAN DEFAULT NULL,
+	is_home BOOLEAN DEFAULT NULL,
+	is_work BOOLEAN DEFAULT NULL
 );
 
 CREATE TABLE vehicle_status (
