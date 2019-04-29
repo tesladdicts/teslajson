@@ -4,18 +4,10 @@
 #
 
 import argparse
-#import datetime
-#from datetime import timedelta
-#import requests
-#import subprocess
-#import tesla_parselib
 import json
 import csv
 import psycopg2
 from psycopg2 import sql
-#from psycopg2.extensions import AsIs
-#from jinja2 import Environment, FileSystemLoader
-#from xhtml2pdf import pisa
 
 parser = argparse.ArgumentParser(description="Load supercharger locations from tab-separated file")
 parser.add_argument('--verbose', '-v', action='count', help='Increasing levels of verbosity')
