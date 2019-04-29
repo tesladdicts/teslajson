@@ -119,7 +119,7 @@ def outputit(this):
         rate=""
 
     print("%s %-8s odo=%-7s spd=%-3s bat=%-12s chg@%-12s add=%s"%
-          (datetime.datetime.fromtimestamp(this.timets).strftime('%Y-%m-%d %H:%M:%S'),
+          (datetime.fromtimestamp(this.timets).strftime('%Y-%m-%d %H:%M:%S'),
            this.mode,
            "%.2f"%this.odometer if this.odometer else "",
            str(this.speed or ""),
@@ -150,8 +150,8 @@ def analyzer(this, firstthismode, lastprevmode, save, lastthis, reallasttime):
                 this.timets = reallasttime
                 reallasttime = None
 
-            firstthismodetime = datetime.datetime.fromtimestamp(firstthismode.timets)
-            thistime = datetime.datetime.fromtimestamp(save.timets)
+            firstthismodetime = datetime.fromtimestamp(firstthismode.timets)
+            thistime = datetime.fromtimestamp(save.timets)
             if not lastprevmode or not lastprevmode.usable_battery_level or not lastprevmode.odometer:
                 print("%s            ending %s, but did not have previous state to compute deltas"%
                       (firstthismodetime.strftime('%Y-%m-%d %H:%M:%S'), firstthismode.mode))
