@@ -17,7 +17,12 @@ args = parser.parse_args()
 
 def toRad(degree):
     """convert degrees to radians"""
-    return degree*3.14159265359/180
+    try:
+        d = float(degree)  
+    except ValueError:
+        return None
+    else:
+        return d*3.14159265359/180
 
 if args.verbose is None:
     args.verbose = 0
@@ -50,7 +55,7 @@ if args.dbconfig:
     with open(args.tsvfile) as infile:
         reader = csv.reader(infile, delimiter='\t')
         # setup SQL statements
-        insert_flds = ["name","latitude","longitude","is_tesla_supercharger", "is_charge_station", "is_home",
+        insert_flds = ["name","latitude","longitude","latrad", "lonrad", "is_tesla_supercharger", "is_charge_station", "is_home",
 	"is_work"]
         insert_str = sql.SQL("INSERT INTO location ({}) VALUES ({})").format(sql.SQL(",").join(map(sql.Identifier, insert_flds)),sql.SQL(",").join(map(sql.Placeholder, insert_flds)))
         query = sql.SQL("SELECT location_id FROM location WHERE name={} AND latitude={} AND longitude={} AND is_tesla_supercharger={} AND is_charge_station = {} AND is_home = {} AND is_work = {}").format(sql.Placeholder(), sql.Placeholder(), sql.Placeholder(), sql.Placeholder(), sql.Placeholder(), sql.Placeholder(), sql.Placeholder() )
