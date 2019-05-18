@@ -15,6 +15,10 @@ parser.add_argument('--dbconfig', type=str, default='dbconfig', help='Insert rec
 parser.add_argument('tsvfile', type=str, help="file with data in tsv format")
 args = parser.parse_args()
 
+def toRad(degree):
+    """convert degrees to radians"""
+    return degree*3.14159265359/180
+
 if args.verbose is None:
     args.verbose = 0
 
@@ -61,9 +65,9 @@ if args.dbconfig:
 	    if cursor.rowcount<1:
 	        addedlocs = addedlocs + 1
 	        if args.verbose>2:
-	            print cursor.mogrify(insert_str,{"name": row[0], "latitude": row[1], "longitude": row[2], "is_tesla_supercharger": row[3], "is_charge_station": row[4], "is_home": row[5], "is_work": row[6]})
+	            print cursor.mogrify(insert_str,{"name": row[0], "latitude": row[1], "longitude": row[2], "latrad": toRad(row[1]), "lonrad": toRad(row[2]), "is_tesla_supercharger": row[3], "is_charge_station": row[4], "is_home": row[5], "is_work": row[6]})
                 try:
-                    cursor.execute(insert_str,{"name": row[0], "latitude": row[1], "longitude": row[2], "is_tesla_supercharger": row[3], "is_charge_station": row[4], "is_home": row[5], "is_work": row[6]})
+                    cursor.execute(insert_str,{"name": row[0], "latitude": row[1], "longitude": row[2], "latrad": toRad(row[1]), "lonrad": toRad(row[2]), "is_tesla_supercharger": row[3], "is_charge_station": row[4], "is_home": row[5], "is_work": row[6]})
                 except Exception as error :
                     print("Error: failed to insert record into location: %s"%str(error))
                     dbconn.rollback()
