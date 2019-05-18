@@ -25,12 +25,17 @@ CREATE TABLE location (
 	location_id BIGSERIAL PRIMARY KEY,
 	latitude DOUBLE PRECISION NOT NULL,
 	longitude DOUBLE PRECISION NOT NULL,
+	latrad DOUBLE PRECISION NOT NULL,
+	lonrad DOUBLE PRECISION NOT NULL,
 	name VARCHAR(255) DEFAULT NULL,
 	is_tesla_supercharger BOOLEAN DEFAULT NULL,
 	is_charge_station BOOLEAN DEFAULT NULL,
 	is_home BOOLEAN DEFAULT NULL,
 	is_work BOOLEAN DEFAULT NULL
 );
+
+CREATE INDEX latidx ON location (latrad);
+CREATE INDEX lonidx ON location (lonrad);
 
 CREATE TABLE vehicle_status (
 	timets TIMESTAMP WITH TIME ZONE NOT NULL,
