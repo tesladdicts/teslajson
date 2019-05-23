@@ -8,7 +8,7 @@
   <table width="80%">
    {% for item in plist -%}
     <tr><td>{{item['no']}}</td><td width="34%">{{item['sdate']}}</td><td width="29%">{{item['stime']}}</td><td width="29%">{{item['th']}}h {{item['tm']}}min</td></tr>
-    <tr><td></td><td>{{item['lat']}},{{item['long']}}</td><td>inside {{item['tin']}}&deg;C</td><td>outside {{item['tout']}}&deg;C</td></tr>
+    <tr><td></td><td>{{item['loc']}}</td><td>inside {{item['tin']}}&deg;C</td><td>outside {{item['tout']}}&deg;C</td></tr>
     <tr><td></td><td>{{item['smiles']}} miles &rarr; {{item['emiles']}} miles</td><td>+{{item['tmiles']}} miles</td><td>{{item['mph']}} miles/h</td></tr>
     <tr><td></td><td>{{item['spct']}}% &rarr; {{item['epct']}}%</td><td>+{{item['tkwh']}} KWh</td><td>{{item['tkw']}} KW</td></tr>
     <tr><td>&nbsp;</td><td></td><td></td><td></td></tr>

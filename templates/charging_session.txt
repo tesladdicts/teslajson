@@ -4,7 +4,7 @@
 
 {% for item in plist -%}
 {{item['no']}} - {{item['sdate']}} {{item['stime']}}, Duration: {{item['th']}}h {{item['tm']}}min
-     Location: {{item['lat']}},{{item['long']}}
+     Location: {{item['loc']}}
      Avg temperatures: inside {{item['tin']}} C, outside {{item['tout']}} C
      Battery: {{item['tkwh']}} KWh added ({{item['spct']}}% to {{item['epct']}}%). {{item['tmiles']}} miles range added
      Rate: {{item['tkw']}} KW, {{item['mph']}} miles/h.

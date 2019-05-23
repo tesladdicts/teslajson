@@ -129,8 +129,7 @@ if args.dbconfig:
             toprint['stime'] = res[i][0].strftime('%H:%M:%S %Z')
             toprint['th'] = tspanh
             toprint['tm'] = tspanm
-            toprint['lat'] = str(res[i][7])
-            toprint['long'] = str(res[i][8])
+            toprint['loc'] = str(res[i][7]) + "," + str(res[i][8])
             toprint['tin'] = "%.1f"%(chtavg[0][0])
             toprint['tout'] = "%.1f"%(chtavg[0][1])
             toprint['smiles'] = str(res[i][4])
