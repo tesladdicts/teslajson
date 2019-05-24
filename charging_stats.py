@@ -3,6 +3,7 @@
 # Print charging statistics for last n days (default 7)
 #
 
+import math
 import argparse
 import datetime
 from datetime import timedelta
@@ -14,6 +15,15 @@ import psycopg2
 from psycopg2.extensions import AsIs
 from jinja2 import Environment, FileSystemLoader
 from xhtml2pdf import pisa
+
+def toRad(degree):
+    """convert degrees to radians"""
+    try:
+        d = float(degree)  
+    except ValueError:
+        return None
+    else:
+        return d*math.pi/180 #3.14159265359/180
 
 parser = argparse.ArgumentParser(description="Print charging statistics for last n days")
 parser.add_argument('--verbose', '-v', action='count', help='Increasing levels of verbosity')
@@ -129,7 +139,44 @@ if args.dbconfig:
             toprint['stime'] = res[i][0].strftime('%H:%M:%S %Z')
             toprint['th'] = tspanh
             toprint['tm'] = tspanm
-            toprint['loc'] = str(res[i][7]) + "," + str(res[i][8])
+            # check if there is a location in the database within 180m of where we charged
+            # applying the method in http://janmatuschek.de/LatitudeLongitudeBoundingCoordinates
+            # assuming that the location is not close to the poles (this is fairly safe since 
+            # the poles don't have superchargers, homes or work within 180m...)
+            if res[i][7] is not None and res[i][8] is not None:
+	        latr = toRad(res[i][7])
+	        lonr = toRad(res[i][8])
+	        dd = 180.0/6378137.0
+	        latmin = latr - dd
+	        latmax = latr + dd
+	        deltalon = math.asin(math.sin(dd)/math.cos(latr))
+	        lonmin = lonr - deltalon
+	        lonmax = lonr + deltalon
+	        locquery='SELECT name, is_tesla_supercharger, is_charge_station, is_home, is_work FROM location WHERE (latrad >= %s AND latrad <= %s) AND (lonrad >= %s AND lonrad <= %s) AND acos(sin(%s) * sin(latrad) + cos(%s) * cos(latrad) * cos(lonrad - (%s))) <= %s'
+	        cursor.execute(locquery,(latmin,latmax,lonmin,lonmax,latr,latr,lonr,dd))
+	        nlocs = cursor.rowcount
+	        if nlocs > 0:
+		    locstr = ""
+		    locinfo = cursor.fetchone()
+		    if locinfo[1]:
+		        locstr = "Supercharger: "
+		    else:
+		        if locinfo[2]:
+			    locstr = "Charger: "
+		    if locinfo[3]:
+		        locstr = locstr + "Home"
+		    else:
+		        if locinfo[4]:
+			    locstr = locstr + "Work"
+			else:
+			    locstr = locstr + locinfo[0]
+		    if nlocs > 1:
+		        locstr = locstr + " *"
+		    toprint['loc'] = locstr
+		else:
+		    toprint['loc'] = str(res[i][7]) + "," + str(res[i][8])
+	    else:
+	        toprint['loc'] = "unknown location"
             toprint['tin'] = "%.1f"%(chtavg[0][0])
             toprint['tout'] = "%.1f"%(chtavg[0][1])
             toprint['smiles'] = str(res[i][4])
@@ -192,7 +239,6 @@ if args.dbconfig:
 	        pisaStatus = pisa.CreatePDF(report,dest=ofile)
 	        ofile.close()
 	        # TODO: with pisaStatus.err here
-
 
     if(dbconn):
         cursor.close()
