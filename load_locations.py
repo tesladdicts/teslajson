@@ -3,6 +3,7 @@
 # Load supercharger locations from TSV file
 #
 
+import math
 import argparse
 import json
 import csv
@@ -22,7 +23,7 @@ def toRad(degree):
     except ValueError:
         return None
     else:
-        return d*3.14159265359/180
+        return d*math.pi/180
 
 if args.verbose is None:
     args.verbose = 0
