@@ -56,8 +56,7 @@ if args.dbconfig:
     with open(args.tsvfile) as infile:
         reader = csv.reader(infile, delimiter='\t')
         # setup SQL statements
-        insert_flds = ["name","latitude","longitude","latrad", "lonrad", "is_tesla_supercharger", "is_charge_station", "is_home",
-	"is_work"]
+        insert_flds = ["name","latitude","longitude","latrad", "lonrad", "is_tesla_supercharger", "is_charge_station", "is_home", "is_work"]
         insert_str = sql.SQL("INSERT INTO location ({}) VALUES ({})").format(sql.SQL(",").join(map(sql.Identifier, insert_flds)),sql.SQL(",").join(map(sql.Placeholder, insert_flds)))
         query = sql.SQL("SELECT location_id FROM location WHERE name={} AND latitude={} AND longitude={} AND is_tesla_supercharger={} AND is_charge_station = {} AND is_home = {} AND is_work = {}").format(sql.Placeholder(), sql.Placeholder(), sql.Placeholder(), sql.Placeholder(), sql.Placeholder(), sql.Placeholder(), sql.Placeholder() )
         # process each entry
