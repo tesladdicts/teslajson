@@ -198,8 +198,8 @@ with this user. Set the connection details in the file `dbconfig`,
 including the password for the user (it is advisible to have that file
 protected from other users so as not to reveal the password).
 
-`create user teslauser with encrypted password 'example'`;
-`create database tesladata;`
+`create user teslauser with encrypted password 'example';`
+`create database tesladata encoding 'UTF8' lc_collate='en_US.UTF-8' lc_ctype='en_US.UTF-8' template template0;`
 `grant all privileges on database tesladata to teslauser;`
 `psql -U testauser testladata < create_tables.sql`
 
