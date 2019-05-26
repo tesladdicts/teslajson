@@ -1,0 +1,5 @@
+{% block content %}#	date	time	Location	duration (min)	Temp in (C)	Temp out (C)	Energy (kWh)	bat start (%)	bat end (%)	range added (m)	power (kW)	speed (m/h)
+{% for item in plist -%}
+{{item['no']}}	{{item['sdate']}}	{{item['stime']}}	{{item['loc']}}	{{item['th']*60+item['tm']}}	{{item['tin']}}	{{item['tout']}}	{{item['tkwh']}}	{{item['spct']}}	{{item['epct']}}	{{item['tmiles']}}	{{item['tkw']}}	{{item['mph']}}
+{% endfor %}
+{% endblock %}
