@@ -123,6 +123,7 @@ if args.dbconfig:
             toprint = {}
             n = n + 1
             tm = res[i+1][2]-res[i][2]
+            #TODO: if total miles added is zero there is some problem with this entry!!
             miles_total = miles_total + tm
             tk = res[i+1][3]-res[i][3]
             kwh_total = kwh_total + tk
