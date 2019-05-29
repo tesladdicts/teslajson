@@ -23,7 +23,7 @@ def toRad(degree):
     except ValueError:
         return None
     else:
-        return d*math.pi/180 #3.14159265359/180
+        return d*math.pi/180
 
 parser = argparse.ArgumentParser(description="Print charging statistics for last n days")
 parser.add_argument('--verbose', '-v', action='count', help='Increasing levels of verbosity')
@@ -160,7 +160,12 @@ if args.dbconfig:
 		    locstr = ""
 		    locinfo = cursor.fetchone()
 		    if locinfo[1]:
-		        locstr = "Supercharger: "
+		        if args.format == "pdf":
+			    locstr = "<img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAkAAAAJCAIAAABv85FHAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH4wUdAgcysoXQlwAAAM9JREFUCNc1j7FqwlAARU8igUYRIZm62KVTcXmF/IE4B/wlR1dxcPUPnB0k4iK+R5AOLaW4VSiFwiu0dch1eHQ8557lIkmSt/ZozA6eiuK7roNE0mtZbqCCCg5JUsHzaCQJb+0GtrAF125/LpcBz7NZdDTmy7kI0iR5vFxsq/XTNEDa7cbeuQiA+9UKGJxOAuDP+7hXFAHexmNg3++HNM3z+G6xaADolWWdZQAguJ1MIkkvw+HHen0Dv/9DZsyDtYQr79PpodPZgcvz83we5BXLUWhaegmlLgAAAABJRU5ErkJggg==\" />&nbsp; "
+		        if args.format == "html":
+			    locstr = "<img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH4wUdAiQdp/2arwAAAcZJREFUKM9tksFK41AUhv97U66xJDXFYoNUEOpuBBHdFqGbgKCYBxAHtdJViRufwXdo9RUq7nThJrizC3GwzEA1VpEKhaadmWqDyZ1FpyG9+HNX53xw7n/OTzjnGMl7fu7Y9t/Ly+7ZGYCprS3FMLRcjmUyIQM+kmNZNcZuAOHVJiYcywoxMpzgFArtSoVgXJSy2Vnv5YUDqf39+XIZAAXwZFlf0MDU+rrf7QIgQLtSeTo8BEAGzeaPhQXueVGUA8nNzfTR0c+1Nfj+sEgmJxcfHqhr2wINQM5ms9Vqu1wOaQD8/d29upKKivJxexulY+n0Yr3udzq/trclwZSiSN8fH/lgEJYkTft2dxdLJqmqqisrf66vhzb+791xKCJ3ACAlEv1aDYSA8/jqqt/rjY0IApowzWjFazbrGxufrVbQ798vL/uuG+0mTJOqhiE41nd2YjMz90tLn29vQks1DKrlcoSxyJ+kVKHQMM2PRkOgiSxr+Txlc3PTxWLoQ4rHW8fH7vm5cEcOTB8cMF0fRWNvr316SgCWyXivrwgCgU7t7s6fnIyHr1T6Onyy7JRKYvjCeLu2/fvioletDneiGoaWzzNdD5l/hLzmoFwJ0yQAAAAASUVORK5CYII=\" />&nbsp; "
+			else:
+		            locstr = "Supercharger: "
 		    else:
 		        if locinfo[2]:
 			    locstr = "Charger: "
