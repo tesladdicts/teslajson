@@ -84,6 +84,9 @@ if args.dbconfig:
     if args.verbose>0:
 	print 'Computing statistics for {} (vehicle id {}).'.format(display_name, vehicle_id)
 
+    # up to here the code was the same as for other stats scripts
+    # from this point forward this is particular to charging
+
     # compute date from which to select
     tdelta = timedelta(days=args.days)
     now = datetime.datetime.now()
