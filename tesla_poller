@@ -313,6 +313,10 @@ def monitor_vehicle(vehicle, args, queue):
                     what = "all"
                 elif state == "to_sleep":
                     what = None
+                elif state == "disaster":
+                    state = "recent"
+                    what = "all"
+                    wake(vehicle)
                 else:
                     raise Exception("Unknown state %s"%str(state))
 
@@ -392,8 +396,7 @@ def monitor_vehicle(vehicle, args, queue):
         intrvl = 6 * 10**backoff
         W.write("# %d Disaster sleep for %d\n"%(time.time(),intrvl))
         time.sleep(intrvl)
-        wake(vehicle)
-        state = "recent"
+        state = "disaster"
 
 
 parser = argparse.ArgumentParser()
