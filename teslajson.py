@@ -28,7 +28,6 @@ import time
 import warnings
 
 
-
 class Connection(object):
     """Connection to Tesla Motors API"""
 
@@ -39,6 +38,7 @@ class Connection(object):
                  password='',
                  access_token='',
                  tokens_file='',
+                 tokens_file_use = True,
                  proxy_url = '',
                  proxy_user = '',
                  proxy_password = '',
@@ -61,6 +61,7 @@ class Connection(object):
             access_token
 
           If you combine option 1&2, it will populate the tokens file
+          If you combine option 1&2 with tokens_file_use=False, it will update the tokens file
 
 
         Optional parameters:
@@ -81,11 +82,14 @@ class Connection(object):
         self.debuglevel = 1 if debug else 0
         self.head = {}
         self.tokens_file = tokens_file
+        self.tokens_file_use = tokens_file_use
         self.access_token = access_token
         self.refresh_token = None
 
         # Obtain URL and program access tokens from pastebin if not on CLI
         if not tesla_client:
+            #from tesla_client import Tesla_Client
+            #tesla_client = Tesla_Client.base_info
             tesla_client = self.__open("/raw/0a8e0xTJ", baseurl="http://pastebin.com")
 
         self.current_client = tesla_client['v1']
@@ -111,7 +115,7 @@ class Connection(object):
                 "email" : email,
                 "password" : password }
 
-        if self.tokens_file:
+        if self.tokens_file and self.tokens_file_use:
             try:
                 with open(self.tokens_file, "r") as R:
                     self._update_tokens(stream=R)
@@ -168,6 +172,8 @@ class Connection(object):
     def _refresh_token(self):
         """Refresh tokens using either (preset) email/password or refresh_token"""
 
+        print("# Try to refresh tokens at %s"%str(time.time()))
+
         if self.refresh_token:
             self.oauth = {
                 "grant_type" : "refresh_token",
@@ -179,6 +185,7 @@ class Connection(object):
         tokens = self.__open("/oauth/token", data=self.oauth)
         self._update_tokens(tokens=tokens)
         if self.tokens_file:
+            print("# Updating tokens to %s"%str(tokens))
             with open(self.tokens_file, "w") as W:
                 W.write(json.dumps(tokens))
 
@@ -316,6 +323,7 @@ do speed_limit_set_limit limit_mph=65
     parser.add_argument('--email', default=None, help='Tesla email for authentication option 1')
     parser.add_argument('--password', default=None, help='Tesla password for authentication option 1')
     parser.add_argument('--tokens_file', default=None, help='File containing access token json for tesla service, authentication option 2')
+    parser.add_argument('--tokens_file_use', default=True, action='store_false', help='Do not actually log in via tokens file, update only')
     parser.add_argument('--access_token', default=None, help='Access token for tesla service, authentication option 3')
     parser.add_argument('--proxy_url', default=None, help='URL for optional web proxy')
     parser.add_argument('--proxy_user', default=None, help='Username for optional web proxy')
@@ -336,7 +344,7 @@ do speed_limit_set_limit limit_mph=65
     if args.command not in ('vehicles', 'get', 'do'):
         raise ValueError('Invalidate command')
 
-    c = Connection(email=args.email, password=args.password, access_token=args.access_token, tokens_file=args.tokens_file, proxy_url=args.proxy_url, proxy_user=args.proxy_user, proxy_password=args.proxy_password, retries=args.retries, retry_delay=args.retry_delay, debug=args.debug)
+    c = Connection(email=args.email, password=args.password, access_token=args.access_token, tokens_file=args.tokens_file, tokens_file_use=args.tokens_file_use, proxy_url=args.proxy_url, proxy_user=args.proxy_user, proxy_password=args.proxy_password, retries=args.retries, retry_delay=args.retry_delay, debug=args.debug)
 
     if args.vid is not None:
         try:
