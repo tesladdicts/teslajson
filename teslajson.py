@@ -236,6 +236,7 @@ class Connection(object):
                 if count != self.tries:
                     time.sleep(count * self.retry_delay)
         else:
+            print("# %d %d exceptions: %s"%(time.time(), self.tries, str(last_except)))
             raise last_except
 
         return json.loads(resp.read().decode(charset))

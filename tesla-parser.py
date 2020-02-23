@@ -145,7 +145,6 @@ def analyzer(this, firstthismode, lastprevmode, save, lastthis, reallasttime):
     # analyze data and provide a summary
     while firstthismode and not args.nosummary:
         if firstthismode.mode != this.mode:
-
             if reallasttime:
                 this.timets = reallasttime
                 reallasttime = None
@@ -186,15 +185,28 @@ def analyzer(this, firstthismode, lastprevmode, save, lastthis, reallasttime):
                 usable_battery_level = save.usable_battery_level if save.usable_battery_level < lastthis.usable_battery_level else lastthis.usable_battery_level
                 dodo = save.odometer - lastprevmode.odometer
                 drange = lastprevmode.battery_range - battery_range
+                speeds = sorted(firstthismode.speeds)
+                if not speeds:
+                    speeds.append(0)
+                qspeeds = map(lambda x: str(x), [speeds[int((len(speeds)-1)/4)],speeds[int((len(speeds)-1)/2)],speeds[int(3*(len(speeds)-1)/4)],speeds[len(speeds)-1]])
+                dhours = ((thistime-firstthismodetime).total_seconds()/3600.0)
+                if dhours < .0001:
+                    dhours = .0001
 
-                if dodo > -1:
-                    print("%s +%-16s Drove  %6.2fM at cost of %2.0f%% %5.1fM at %5.1f%% efficiency"%
+                if dodo > -1 and dodo != 0:
+                    print("%s +%-16s Drove  %6.2fM at cost of %2.0f%% %5.1fM at %5.1f%% efficiency; %dWhpm mph:%.0f %s"%
                           (firstthismodetime.strftime('%Y-%m-%d %H:%M:%S'),
                            str(thistime-firstthismodetime),
                            dodo,
                            lastprevmode.usable_battery_level - usable_battery_level,
                            drange,
-                           dodo * 100.0 / drange if drange > 0 else -0))
+                           dodo * 100.0 / drange if drange > 0 else -0,
+                           78200*(lastprevmode.usable_battery_level - usable_battery_level)/100/dodo,
+                           dodo/dhours,
+                           '/'.join(qspeeds)
+                          ))
+                firstthismode.speeds = []
+                save.speeds = []
             elif firstthismode.mode == "Standby":
                 battery_range = save.battery_range if save.battery_range < lastthis.battery_range else lastthis.battery_range
                 usable_battery_level = lastthis.usable_battery_level
@@ -228,6 +240,11 @@ def analyzer(this, firstthismode, lastprevmode, save, lastthis, reallasttime):
         reallasttime = None
         firstthismode = save
         lastprevmode = save
+    if firstthismode.mode == "Driving":
+        if not hasattr(firstthismode, 'speeds'):
+            firstthismode.speeds = []
+        if this.speed > 0:
+            firstthismode.speeds.append(this.speed)
     lastthis = save
 
     if args.verbose:

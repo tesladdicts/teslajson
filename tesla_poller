@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python -u
 import teslajson
 import time
 import json
@@ -15,6 +15,7 @@ import signal
 args = None
 master_connection = None
 master_lock = Lock()
+MERGED_DATA = {}                # Misleading, since it has different ages of data
 
 # Time intervals of importance to program operation
 intervals = {
@@ -33,6 +34,13 @@ intervals = {
 
 
 
+def respond(sock, addr, content):
+    try:
+        sock.sendto(content, addr)
+    except Exception as e:
+        print("# %d respond exception: %s"%(time.time(), str(e)))
+
+
 def monitor_socket(sock, queues, vlist):
     """Monitor RPC socket forever"""
 
@@ -41,6 +49,7 @@ def monitor_socket(sock, queues, vlist):
         if args.verbose:
             print("# %d Received socket data: %s"%(time.time(), str(data)))
         if data is None:
+            print("# %d Received None from socket, exiting monitor"%time.time())
             return
 
         # Try to decode what was sent us
@@ -49,16 +58,20 @@ def monitor_socket(sock, queues, vlist):
         except ValueError:
             if args.verbose:
                 print("# %d Could not parse socket data"%time.time())
+            respond(sock, addr, json.dumps(["Input format error"]))
             continue
 
         # Check for known commands
         if 'cmd' not in dvar:
             if args.verbose:
                 print("# %d No command in socket data"%time.time())
+            respond(sock, addr, json.dumps(["Missing command"]))
             continue
-        if dvar['cmd'] not in ('autocondition','quit'):
+        cmdlist=('get','autocondition','departure','quit')
+        if dvar['cmd'] not in cmdlist:
             if args.verbose:
                 print("# %d Unknown command socket data"%time.time())
+            respond(sock, addr, json.dumps(["Unknown command",cmdlist]))
             continue
 
         # Resolve what car this command applies to
@@ -70,7 +83,12 @@ def monitor_socket(sock, queues, vlist):
             except KeyError:
                 if args.verbose:
                     print("# %d Unknown vehicle position"%time.time())
+                respond(sock, addr, json.dumps(["Unknown vehicle"]))
                 continue
+
+        if dvar['cmd'] == "get":
+            respond(sock, addr, json.dumps(["Success",MERGED_DATA]))
+            continue
 
         # Use pipe to car
         try:
@@ -78,10 +96,13 @@ def monitor_socket(sock, queues, vlist):
         except KeyError:
             if args.verbose:
                 print("# %d Unknown vehicle id"%time.time())
+            respond(sock, addr, json.dumps(["Unknown vehicle"]))
             continue
 
         # Write command to car queue
         q.put(dvar)
+
+        respond(sock, addr, json.dumps(["Success"]))
 
         # Special case, quit command applies to me too
         if dvar['cmd'] == 'quit':
@@ -98,9 +119,28 @@ def handle_queue(v, q, data, outs):
     except Queue.Empty:
         return
 
+    if args.verbose:
+        print("Handling queue command %s"%str(dvar))
+
     # Simple command, go away
     if dvar['cmd'] == 'quit':
         sys.exit(0)
+
+    if dvar['cmd'] == "departure":
+        for f in ("departure_time", "departure_level"):
+            if f in outs:
+                del(outs[f])
+
+        if "departure_time" not in dvar:
+            return
+
+        for f in ("departure_time", "departure_level", "autoresetlimit"):
+            if f in dvar:
+                outs[f] = dvar[f]
+        handle_outstanding(v, MERGED_DATA, outs)
+
+        return
+
 
     # Autocondition--increase charging limit and start A/C
     if dvar['cmd'] == "autocondition":
@@ -111,7 +151,7 @@ def handle_queue(v, q, data, outs):
             data = data_request(v, "all")
 
         # Find the default charge level
-        level = 85 if data['charge_state']['charge_limit_soc'] <= 80 else data['charge_state']['charge_limit_soc'] + 5
+        level = 80 if data['charge_state']['charge_limit_soc'] <= 75 else data['charge_state']['charge_limit_soc'] + 5
         if level > 100:
             level = 100
 
@@ -168,9 +208,82 @@ def handle_queue(v, q, data, outs):
         return True
 
 
+def update_next_action(outs, time):
+    k = 'next_action_time'
+    if k in outs:
+        outs[k] = outs[k] if outs[k] < time else time
+    else:
+        outs[k] = time
+
+
+def calculate_delta_s(target, usable):
+    seconds = 0
+    if usable >= target:
+        return -60
+    # Compute throttle-down time
+    if (target > 96):
+        this_min=usable if usable>96 else 96
+        # Home charger, last 4% in 45 minutes
+        seconds += int(60*(45.0/4.0*(target-this_min)))
+        target = 96
+    # Home charger, approximately 10% an hour (up to 96%)
+    seconds += int(60*(60.0/10.0*(target-usable)))
+    return seconds
 
 def handle_outstanding(v, data, outs):
     """Handle tasks we have been asked to do in the future"""
+
+    if args.verbose:
+        print("Checking outstanding %s"%str(outs))
+
+    if "next_action_time" in outs:
+        del(outs['next_action_time'])
+
+    if "departure_time" in outs:
+        try:
+            if time.time() > outs['departure_time']:
+                raise ValueError('historical time')
+            if 'departure_level' not in outs:
+                outs['departure_level'] = 80 if MERGED_DATA['charge_state']['charge_limit_soc'] <= 75 else MERGED_DATA['charge_state']['charge_limit_soc'] + 5
+            else:
+                outs['departure_level'] = int(outs['departure_level'])
+            if outs['departure_level'] > 100:
+                outs['departure_level'] = 100
+            if outs['departure_level'] < 50:
+                outs['departure_level'] = 50
+            delta_s=calculate_delta_s(int(outs['departure_level']), int(MERGED_DATA['charge_state']['usable_battery_level']))
+            # Calculate when to start charging, when to start conditioning
+            startCat=int(outs['departure_time']) - delta_s
+            startTat=int(outs['departure_time']) - 300
+            print('Charge at %d/%d, temp at %d, to %d from %d now %d then %d'%
+                  (startCat, delta_s,
+                   startTat,
+                   outs['departure_level'],
+                   MERGED_DATA['charge_state']['usable_battery_level'],
+                   time.time(),
+                   int(outs['departure_time'])))
+            if startCat <= time.time() and MERGED_DATA['charge_state']['charge_limit_soc'] != outs['departure_level']:
+                W.write("# %d Resetting charge limit to %d from %d -- departure at %d"%
+                        (time.time(),
+                         int(outs['departure_level']),
+                         int(MERGED_DATA['charge_state']['usable_battery_level']),
+                         int(outs['departure_time'])))
+                wake(v)
+                if "autoresetlimit" not in outs:
+                    outs["autoresetlimit"] = MERGED_DATA['charge_state']['charge_limit_soc']
+                command(v, "set_charge_limit", {"percent": outs["departure_level"]})
+            else:
+                update_next_action(outs, startCat)
+            if startTat <= time.time() and not MERGED_DATA["climate_state"]["is_climate_on"]:
+                wake(v)
+                command(v, "auto_conditioning_start")
+            else:
+                update_next_action(outs, startTat)
+        except (ValueError,KeyError) as e:
+            print("# %d Exception: %s"%(time.time(), str(e)))
+            for f in ("departure_time", "departure_level"):
+                if f in outs:
+                    del(outs[f])
 
     if "reset_charge_limit" in outs:
         # If we see reset_charge_limit, reset it back to the requested limit as soon as car is driving
@@ -268,6 +381,13 @@ def wake(vehicle):
 def monitor_sleep(vehicle, queue, data, outstanding, stime):
     """Sleep for a time, but polling queue and returning early if we did something"""
     while stime > 0:
+        if 'next_action_time' in outstanding:
+            delta_to_next_action = outstanding['next_action_time'] - time.time()
+            if delta_to_next_action < stime:
+                stime = delta_to_next_action
+            if stime < 0:
+                stime = 0
+
         delta = 5 if stime > 5 else stime
         time.sleep(delta)
         stime -= delta
@@ -370,6 +490,10 @@ def monitor_vehicle(vehicle, args, queue):
                 if "drive_state" in vdata and vdata["drive_state"]["shift_state"] is not None:
                     state = "running"
                     last_active = time.time()
+
+                MERGED_DATA.update(vdata)
+                MERGED_DATA["_tp_state"] = state
+                MERGED_DATA["_tp_last_active"] = last_active
 
                 if args.verbose:
                     W.write("# %d STATE: %s sleep(%s) last_all=%d last_active=%d what=%s\n"%(time.time(), state, intervals[state], last_all, last_active,str(what)))

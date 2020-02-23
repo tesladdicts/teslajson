@@ -13,3 +13,6 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 dest = args.cmd_address.split(":")
 dest[1] = int(dest[1])
 sock.sendto(json.dumps(dict(args.variables)), tuple(dest))
+sock.settimeout(5.0)
+data, addr = sock.recvfrom(65536)
+print data
