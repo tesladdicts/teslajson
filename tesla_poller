@@ -187,8 +187,8 @@ def handle_queue(v, q, data, outs):
         if level:
             command(v, "set_charge_limit", {"percent": level})
             if autoresetlimit > 0:
-                outs['reset_charge_limit'] = autoresetlimit
-            message += "Charge limit set to %d from %d (w/reset %d). "%(level, outs['reset_charge_limit'] if 'reset_charge_limit' in outs else -1, autoresetlimit)
+                outs['autoresetlimit'] = autoresetlimit
+            message += "Charge limit set to %d from %d (w/reset %d). "%(level, outs['autoresetlimit'] if 'autoresetlimit' in outs else -1, autoresetlimit)
             if args.verbose:
                 print("# %d Setting charge limit to %d (Reset limit is %d)"%(time.time(),level,autoresetlimit))
 
@@ -285,16 +285,20 @@ def handle_outstanding(v, data, outs):
                 if f in outs:
                     del(outs[f])
 
-    if "reset_charge_limit" in outs:
-        # If we see reset_charge_limit, reset it back to the requested limit as soon as car is driving
-        if "drive_state" in data:
-            if data["drive_state"]["shift_state"] is not None:
-                if args.verbose:
-                    print("# %d Resetting charge limit to %d"%(time.time(), outs["reset_charge_limit"]))
-                W.write("# %d Resetting charge limit to %d"%(time.time(), outs["reset_charge_limit"]))
-                command(v, "set_charge_limit", {"percent": outs["reset_charge_limit"]})
-                del(outs["reset_charge_limit"])
-
+    if "autoresetlimit" in outs:
+        # If we see autoresetlimit, reset it back to the requested limit as soon as car is driving
+        try:
+            autoresetlimit = int(outs["autoresetlimit"])
+            if "drive_state" in data:
+                if data["drive_state"]["shift_state"] is not None:
+                    if args.verbose:
+                        print("# %d Resetting charge limit to %d"%(time.time(), autoresetlimit))
+                    W.write("# %d Resetting charge limit to %d"%(time.time(), autoresetlimit))
+                    command(v, "set_charge_limit", {"percent": autoresetlimit})
+                    del(outs["autoresetlimit"])
+        except ValueError as e:
+            print("# %d Exception: %s"%(time.time(), str(e)))
+            del(outs["autoresetlimit"])
 
 
 nexthour = 0
