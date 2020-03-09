@@ -2,7 +2,7 @@
 
 Python suite to: 1) Access Tesla vehicle status via APIs, 2) Poll and log Tesla vehicle status via API, 3) Parse vehicle logs, and 4) Perform some limited indirect RPCs to change Tesla vehicle status
 
-Tesla vehicle status API written by Greg Glockner, poller/rpc written by Seth Robertson
+Tesla vehicle status API written by Greg Glockner, poller/rpc written by Seth Robertson, database reports by Pedro Mendes
 
 ## API Description
 This is a simple Python interface to the [Tesla JSON
