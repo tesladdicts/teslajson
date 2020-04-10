@@ -242,8 +242,11 @@ def handle_outstanding(v, data, outs):
 
     if "departure_time" in outs:
         try:
+            for f in ("departure_time", "departure_level"):
+                if f in outs:
+                    outs[f] = int(outs[f])
             if time.time() > outs['departure_time']:
-                raise ValueError('historical time')
+                raise ValueError('historical time (generally expected)')
             if 'departure_level' not in outs:
                 outs['departure_level'] = 80 if MERGED_DATA['charge_state']['charge_limit_soc'] <= 75 else MERGED_DATA['charge_state']['charge_limit_soc'] + 5
             else:
@@ -264,7 +267,7 @@ def handle_outstanding(v, data, outs):
                    time.time(),
                    int(outs['departure_time'])))
             if startCat <= time.time() and MERGED_DATA['charge_state']['charge_limit_soc'] != outs['departure_level']:
-                W.write("# %d Resetting charge limit to %d from %d -- departure at %d"%
+                W.write("# %d Resetting charge limit to %d from %d -- departure at %d\n"%
                         (time.time(),
                          int(outs['departure_level']),
                          int(MERGED_DATA['charge_state']['usable_battery_level']),
@@ -294,7 +297,7 @@ def handle_outstanding(v, data, outs):
                 if data["drive_state"]["shift_state"] is not None:
                     if args.verbose:
                         print("# %d Resetting charge limit to %d"%(time.time(), autoresetlimit))
-                    W.write("# %d Resetting charge limit to %d"%(time.time(), autoresetlimit))
+                    W.write("# %d Resetting charge limit to %d\n"%(time.time(), autoresetlimit))
                     command(v, "set_charge_limit", {"percent": autoresetlimit})
                     del(outs["autoresetlimit"])
         except ValueError as e:
