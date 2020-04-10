@@ -23,9 +23,13 @@ except: # Python 2
     from urllib import urlencode
     from urllib2 import Request, build_opener
     from urllib2 import ProxyHandler, HTTPBasicAuthHandler, HTTPHandler, HTTPSHandler, HTTPError, URLError
+from ssl import SSLError
 import json
 import time
 import warnings
+import socket
+
+socket.setdefaulttimeout(10)
 
 
 class Connection(object):
@@ -225,10 +229,10 @@ class Connection(object):
                 else:
                     opener = build_opener(HTTPSHandler(debuglevel=self.debuglevel))
 
-                resp = opener.open(req)
+                resp = opener.open(req, timeout=5)
                 charset = resp.info().get('charset', 'utf-8')
                 break
-            except (HTTPError, URLError) as e:
+            except (HTTPError, URLError, SSLError) as e:
                 last_except = e
                 if self.debug:
                     print('# %d Timed out or other error for %s: %s\n'%(time.time(),type,str(e)))

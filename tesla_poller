@@ -44,6 +44,7 @@ def respond(sock, addr, content):
 def monitor_socket(sock, queues, vlist):
     """Monitor RPC socket forever"""
 
+    sock.settimeout(None)
     while True:
         data, addr = sock.recvfrom(1024)
         if args.verbose:
