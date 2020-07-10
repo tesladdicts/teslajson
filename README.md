@@ -101,7 +101,7 @@ in the [Tesla JSON API](http://docs.timdorr.apiary.io/).
 	./teslajson.py --tokens_file /tmp/tesla.creds get gui_settings
 	./teslajson.py --tokens_file /tmp/tesla.creds get mobile_enabled
 	./teslajson.py --tokens_file /tmp/tesla.creds get data
-  ./teslajson.py --tokens_file /tmp/tesla.creds --json get data
+	./teslajson.py --tokens_file /tmp/tesla.creds --json get data
 	./teslajson.py --tokens_file /tmp/tesla.creds do charge_port_door_open
 
 
