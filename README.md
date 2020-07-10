@@ -55,6 +55,7 @@ Optional parameters:
 - _retry\_delay_: multiplicative backoff on failure
 - _tesla\_client_: Override API retrevial from pastebin
 - _debug_: Activate HTTP debugging
+- _json_: Return result in parsable JSON format
 
 
 `Connection.vehicles`: A list of Vehicle objects, corresponding to the
@@ -100,6 +101,7 @@ in the [Tesla JSON API](http://docs.timdorr.apiary.io/).
 	./teslajson.py --tokens_file /tmp/tesla.creds get gui_settings
 	./teslajson.py --tokens_file /tmp/tesla.creds get mobile_enabled
 	./teslajson.py --tokens_file /tmp/tesla.creds get data
+	./teslajson.py --tokens_file /tmp/tesla.creds --json get data
 	./teslajson.py --tokens_file /tmp/tesla.creds do charge_port_door_open
 
 

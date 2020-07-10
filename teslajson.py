@@ -333,6 +333,7 @@ do speed_limit_set_limit limit_mph=65
     parser.add_argument('--tesla_client', default=None, help='Override API retrevial from pastebin')
     parser.add_argument('--debug', default=False, action='store_true', help='Example debugging')
     parser.add_argument('--vid', default=None, help='Vehicle to operate on')
+    parser.add_argument('--json', default=False, action='store_true', help='Output as Json object')
 
     parser.add_argument('command', default='vehicles', nargs='?', help='Command for program (get, do)')
     parser.add_argument('args', nargs='*', help='Command specific arguments')
@@ -361,17 +362,25 @@ do speed_limit_set_limit limit_mph=65
             print(v["id"])
         elif args.command == "get":
             if not args.args:
-                print(str(v.data_request(None)))
+                result = v.data_request(None)
             elif args.args[0] == "data" or args.args[0] == "vehicle_data" or args.args[0] == "mobile_enabled":
-                print(str(v.get(args.args[0])))
+                result = v.get(args.args[0])
             else:
-                print(str(v.data_request(args.args[0])))
+                result = v.data_request(args.args[0])
+            if args.json == True:
+                print(json.dumps(result))
+            else:
+                print(str(result))
         elif args.command == "do":
             command = args.args[0]
             data = dict([kv.split('=',1) for kv in args.args[1:]])
             if command == "wake_up":
-                print(str(v.wake_up()))
+                result = v.wake_up()
             else:
-                print(str(v.command(command, data)))
+                result = v.command(command, data)
+            if args.json == True:
+                print(json.dumps(result))
+            else:
+                print(str(result))
         else:
             raise ValueError("Unknown command %s"%args.command)
