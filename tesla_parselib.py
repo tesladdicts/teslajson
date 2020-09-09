@@ -118,7 +118,7 @@ class tesla_record(object):
     def _jget(self, tree, notfound=None):
         info = self.jline
         for key in tree:
-            if key not in info:
+            if key not in info or info[key] is None:
                 return notfound
             info = info[key]
         return info
