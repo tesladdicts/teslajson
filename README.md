@@ -231,6 +231,8 @@ you use --variables to specify commands.  Example:
         ./poller_rpc.py --cmd_address 127.0.0.1:60001 --variables cmd=autocondition --variables level=77 --variables temp=
         # Set battery charge limit to 90%, reset limit to 77% when next driving, precondition cabin to 80°
         ./poller_rpc.py --cmd_address 127.0.0.1:60001 --variables cmd=autocondition --variables level=90 --variables autoresetlimit=77 --variables temp=80
+	# Get the most recent variables in json format
+	./poller_rpc.py --cmd_address 127.0.0.1:60001 --variables cmd=get
 
 
 ### Bugs
