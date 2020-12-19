@@ -14,7 +14,11 @@ class tesla_record(object):
     def __init__(self, line=None, tdata=None, want_offline=False):
         """Create object from json text data from tesla_poller"""
 
-        if self.jline:
+        if not getattr(self,"jline"):
+            raise Exception("pylint does not understand __new__")
+            self.jline = {}
+
+        if getattr(self,"jline"):
             # self.jline set in new
             self.timets =                   self.jline["retrevial_time"]
             self.vehicle_id =               self.jline["vehicle_id"]

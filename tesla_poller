@@ -8,7 +8,7 @@ from threading import Thread, Lock
 import sys
 import subprocess
 import socket
-import Queue
+import queue
 import faulthandler
 import signal
 
@@ -32,6 +32,21 @@ intervals = {
   "recent_interval": 500 # interval to keep state "recent" after something interesting
   }
 
+
+class Unbuffered(object):
+    def __init__(self, stream):
+        self.stream = stream
+
+    def write(self, data):
+        self.stream.write(data)
+        self.stream.flush()
+
+    def writelines(self, datas):
+        self.stream.writelines(datas)
+        self.stream.flush()
+
+    def __getattr__(self, attr):
+        return getattr(self.stream, attr)
 
 
 def respond(sock, addr, content):
@@ -117,7 +132,7 @@ def handle_queue(v, q, data, outs):
     # Is there anything to do?
     try:
         dvar = q.get_nowait()
-    except Queue.Empty:
+    except queue.Empty:
         return
 
     if args.verbose:
@@ -326,7 +341,7 @@ def output_maintenance():
         nexthour = (int(cur / 3600)+1) * 3600
         fname = time.strftime("%Y-%m-%d.json", time.gmtime(cur))
         pname = "%s/%s"%(args.outdir, fname)
-        W = open(pname, "a", 0)
+        W = Unbuffered(open(pname, "a"))
         subprocess.call(["ln", "-sf", fname, "%s/cur.json"%args.outdir])
 
 
@@ -532,7 +547,7 @@ def monitor_vehicle(vehicle, args, queue):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--verbose', '-v', action='count', help='Increasing levels of verbosity')
+parser.add_argument('--verbose', '-v', action='count', default=0, help='Increasing levels of verbosity')
 parser.add_argument('--intervals',action='append',type=lambda x: x.split('='), help="Set important intervals name=secs for names in %s"%str(intervals.keys()))
 parser.add_argument('--email', default=None, help='Tesla email for authentication option 1')
 parser.add_argument('--password', default=None, help='Tesla password for authentication option 1')
@@ -572,7 +587,7 @@ if args.cmd_address:
     dest = args.cmd_address.split(":")
     dest[1] = int(dest[1])
     sock.bind(tuple(dest))
-    queues = dict([(v['id'], Queue.Queue()) for v in master_connection.vehicles])
+    queues = dict([(v['id'], queue.Queue()) for v in master_connection.vehicles])
     Thread(target=monitor_socket, args=(sock,queues,master_connection.vehicles)).start()
 else:
     sock = None
@@ -584,7 +599,8 @@ if len(master_connection.vehicles) == 1:
 else:
     tlist = []
     for vehicle in master_connection.vehicles:
-        t = Thread(target=monitor_vehicle, args=(vehicle,args,sock,queues[vehicle['id']])).start()
+        t = Thread(target=monitor_vehicle, args=(vehicle,args,sock,queues[vehicle['id']]))
+        t.start()
         tlist.append(t)
     for t in tlist:
         t.join()

@@ -19,7 +19,7 @@ args = parser.parse_args()
 def toRad(degree):
     """convert degrees to radians"""
     try:
-        d = float(degree)  
+        d = float(degree)
     except ValueError:
         return None
     else:
@@ -48,7 +48,7 @@ if args.dbconfig:
     except (Exception, psycopg2.Error) as error :
         print("Error while connecting to PostgreSQL", error)
         exit()
-        
+
     # initialize counters
     totlocs = 0
     addedlocs = 0
@@ -61,16 +61,16 @@ if args.dbconfig:
         query = sql.SQL("SELECT location_id FROM location WHERE name={} AND latitude={} AND longitude={} AND is_tesla_supercharger={} AND is_charge_station = {} AND is_home = {} AND is_work = {}").format(sql.Placeholder(), sql.Placeholder(), sql.Placeholder(), sql.Placeholder(), sql.Placeholder(), sql.Placeholder(), sql.Placeholder() )
         # process each entry
         for row in reader:
-	    totlocs = totlocs + 1
-	    # check if this is already in the database
-	    if args.verbose>2:
-	        print cursor.mogrify(query,[row[0], row[1], row[2], row[3], row[4], row[5], row[6] ] )
-	    cursor.execute(query,[row[0], row[1], row[2], row[3], row[4], row[5], row[6] ] )
-	    # if there is no match we insert it
-	    if cursor.rowcount<1:
-	        addedlocs = addedlocs + 1
-	        if args.verbose>2:
-	            print cursor.mogrify(insert_str,{"name": row[0], "latitude": row[1], "longitude": row[2], "latrad": toRad(row[1]), "lonrad": toRad(row[2]), "is_tesla_supercharger": row[3], "is_charge_station": row[4], "is_home": row[5], "is_work": row[6]})
+            totlocs = totlocs + 1
+            # check if this is already in the database
+            if args.verbose>2:
+                print(cursor.mogrify(query,[row[0], row[1], row[2], row[3], row[4], row[5], row[6] ] ))
+            cursor.execute(query,[row[0], row[1], row[2], row[3], row[4], row[5], row[6] ] )
+            # if there is no match we insert it
+            if cursor.rowcount<1:
+                addedlocs = addedlocs + 1
+                if args.verbose>2:
+                    print(cursor.mogrify(insert_str,{"name": row[0], "latitude": row[1], "longitude": row[2], "latrad": toRad(row[1]), "lonrad": toRad(row[2]), "is_tesla_supercharger": row[3], "is_charge_station": row[4], "is_home": row[5], "is_work": row[6]}))
                 try:
                     cursor.execute(insert_str,{"name": row[0], "latitude": row[1], "longitude": row[2], "latrad": toRad(row[1]), "lonrad": toRad(row[2]), "is_tesla_supercharger": row[3], "is_charge_station": row[4], "is_home": row[5], "is_work": row[6]})
                 except Exception as error :
@@ -79,23 +79,22 @@ if args.dbconfig:
                 else:
                     dbconn.commit()
             else:
-	        if args.verbose>0:
-		    outstr = 'skipping duplicate ({}, {}, {}'.format(row[0], str(row[1]), str(row[2]))
-	            if row[3] == 't': 
-		        outstr = outstr + ', Tesla supercharger'
-		    if row[4] == 't':
-		        outstr = outstr + ', Charging station'
-		    if row[5] == 't':
-		        outstr = outstr + ', Home'
-		    if row[6] == 't':
-		        outstr = outstr + ', Work'
-		    outstr = outstr + ')'
-	            print(outstr)
+                if args.verbose>0:
+                    outstr = 'skipping duplicate ({}, {}, {}'.format(row[0], str(row[1]), str(row[2]))
+                    if row[3] == 't':
+                        outstr = outstr + ', Tesla supercharger'
+                    if row[4] == 't':
+                        outstr = outstr + ', Charging station'
+                    if row[5] == 't':
+                        outstr = outstr + ', Home'
+                    if row[6] == 't':
+                        outstr = outstr + ', Work'
+                    outstr = outstr + ')'
+                    print(outstr)
 
     if(dbconn):
         cursor.close()
         dbconn.close()
         if args.verbose>0:
-            print "PostgreSQL connection closed"
-    print "Added " + str(addedlocs) + " new locations (from " + str(totlocs) + " total)"
-
+            print("PostgreSQL connection closed")
+    print("Added " + str(addedlocs) + " new locations (from " + str(totlocs) + " total)")

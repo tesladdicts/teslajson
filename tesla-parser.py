@@ -344,8 +344,8 @@ for fname in args.files:
                     updateargs = this.sql_vehicle_update_dict(res)
                     # update the row if needed
                     if len(updateargs) > 0:
-		        if len(updateargs) == 1:
-		            query = 'UPDATE vehicle SET %s = %s WHERE vehicle_id = %s'
+                        if len(updateargs) == 1:
+                            query = 'UPDATE vehicle SET %s = %s WHERE vehicle_id = %s'
                         else:
                             query = "UPDATE vehicle SET (%s) = %s WHERE vehicle_id = %s"
                         vals = (AsIs(','.join(updateargs.keys())), tuple(updateargs.values()), this.vehicle_id)
@@ -408,7 +408,7 @@ for fname in args.files:
 #                                if args.verbose>1:
 #                                    print('vehicle: {} timestamp: {}'.format(insertargs['vehicle_id'],insertargs['timets']))
                         else:
-			    if args.verbose>0:
+                            if args.verbose>0:
                                 print(error.diag.sqlstate)
                             print("Error: failed to insert record into vehicle_status: %s"%str(error))
                             dbconn.rollback()

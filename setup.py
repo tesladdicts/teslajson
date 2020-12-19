@@ -23,5 +23,5 @@ setup(name='teslajson',
       scripts=['tesla_poller','tesla-parser.py','poller_rpc.py'],
       author='Greg Glockner, Seth Robertson, Pedro Mendes',
       license='MIT',
-      install_requires=['pytz','psycopg2-binary','Request']
+      install_requires=['pytz','psycopg2-binary','psycopg2']
       )

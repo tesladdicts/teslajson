@@ -35,7 +35,7 @@ socket.setdefaulttimeout(10)
 class Connection(object):
     """Connection to Tesla Motors API"""
 
-    __version__ = "1.5.0"
+    __version__ = "1.5.1"
 
     def __init__(self,
                  email='',
